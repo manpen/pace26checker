@@ -1,0 +1,8 @@
+[package]
+name = "pace26checker"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+pace26io = {path = "../pace26io"}
+structopt = "0.3.26"
