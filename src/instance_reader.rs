@@ -1,4 +1,4 @@
-use crate::lint_leaf_labels_coverage::*;
+use crate::{bin_tree_with_parent::BinTreeWithParentBuilder, lint_leaf_labels_coverage::*};
 
 use super::options::Opts;
 use std::{
@@ -11,8 +11,10 @@ use log::{error, info, warn};
 use pace26io::{newick::*, pace::reader::*};
 use thiserror::Error;
 
+pub type Tree = super::bin_tree_with_parent::NodeCursor;
+
 pub struct Instance {
-    pub trees: Vec<BinTree>,
+    pub trees: Vec<Tree>,
     pub num_leaves: u32,
 }
 
@@ -25,7 +27,7 @@ impl Instance {
         self.num_leaves
     }
 
-    pub fn trees(&self) -> &[BinTree] {
+    pub fn trees(&self) -> &[Tree] {
         &self.trees
     }
 
@@ -64,7 +66,7 @@ struct InstanceInputVisitor {
     warnings: Vec<InstanceVisitorWarning>,
 
     header: Option<(u32, u32)>,
-    trees: Vec<(usize, BinTree)>,
+    trees: Vec<(usize, Tree)>,
 }
 
 #[derive(Error, Debug)]
@@ -121,7 +123,7 @@ impl InstanceVisitor for InstanceInputVisitor {
                 .push(InstanceVisitorError::NoHeaderBeforeFirstTree { lineno });
         }
 
-        let mut builder = BinTreeBuilder::new();
+        let mut builder = BinTreeWithParentBuilder::default();
         match builder.parse_newick_from_str(line) {
             Ok(tree) => self.trees.push((lineno, tree)),
             Err(e) => {
