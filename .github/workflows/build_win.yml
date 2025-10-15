@@ -34,7 +34,7 @@ jobs:
           key: cargo-build-windows
       
       - name: Build
-        run: cargo build --profile smaler-release --verbose
+        run: cargo build --profile smaller-release --verbose
 
       - name: Run tests
         run: cargo test --verbose 
