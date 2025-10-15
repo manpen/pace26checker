@@ -4,16 +4,15 @@ use std::{
     rc::{Rc, Weak},
 };
 
-pub enum Children {
-    Inner { left: NodeRef, right: NodeRef },
-    Leaf { label: Label },
+pub trait BottomUpCursor: Sized {
+    fn parent(&self) -> Option<Self>;
 }
-
-type NodeRef = Rc<RefCell<Node>>;
-type WeakNodeRef = Weak<RefCell<Node>>;
 
 #[derive(Clone)]
 pub struct NodeCursor(NodeRef);
+
+#[derive(Default)]
+pub struct BinTreeWithParentBuilder {}
 
 pub struct Node {
     parent: WeakNodeRef,
@@ -21,8 +20,13 @@ pub struct Node {
     children: Children,
 }
 
-#[derive(Default)]
-pub struct BinTreeWithParentBuilder {}
+enum Children {
+    Inner { left: NodeRef, right: NodeRef },
+    Leaf { label: Label },
+}
+
+type NodeRef = Rc<RefCell<Node>>;
+type WeakNodeRef = Weak<RefCell<Node>>;
 
 impl TreeBuilder for BinTreeWithParentBuilder {
     type Node = NodeCursor;
@@ -102,6 +106,12 @@ impl NodeCursor {
     }
 }
 
+impl BottomUpCursor for NodeCursor {
+    fn parent(&self) -> Option<Self> {
+        Some(NodeCursor(self.0.borrow().parent.upgrade()?))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -138,5 +148,18 @@ mod tests {
             2
         );
         assert_eq!(tree.top_down().right_child().unwrap().0.borrow().depth, 1);
+    }
+
+    #[test]
+    fn bottom_up_cursor() {
+        let tree = BinTreeWithParentBuilder::default()
+            .parse_newick_from_str("((1,2),3);")
+            .unwrap();
+
+        let leaf = tree.top_down().left_child().unwrap().left_child().unwrap();
+        assert_eq!(leaf.0.borrow().depth, 2);
+        assert_eq!(leaf.parent().unwrap().0.borrow().depth, 1);
+        assert_eq!(leaf.parent().unwrap().parent().unwrap().0.borrow().depth, 0);
+        assert!(leaf.parent().unwrap().parent().unwrap().parent().is_none());
     }
 }
