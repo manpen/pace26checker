@@ -1,4 +1,4 @@
-use pace26io::newick::{Label, TopDownCursor};
+use pace26io::binary_tree::*;
 use thiserror::Error;
 
 #[derive(Debug, Error, PartialEq)]
@@ -22,39 +22,26 @@ pub fn assert_leaf_labels_are_within_range<C: TopDownCursor>(
     cursors: impl Iterator<Item = C>,
     expected_num_leaves: u32,
 ) -> Result<(), LeafLintErrors> {
-    fn collect_rec<C: TopDownCursor>(
-        cursor: C,
-        leaves: &mut Vec<u32>,
-        expected_num_leaves: u32,
-    ) -> Result<(), LeafLintErrors> {
-        if let Some(Label(label)) = cursor.leaf_label() {
-            if label < 1 || label > expected_num_leaves {
-                return Err(LeafLintErrors::InvalidLabel {
-                    label,
-                    expected: expected_num_leaves,
-                });
-            }
-
-            if leaves.len() == expected_num_leaves as usize {
-                return Err(LeafLintErrors::TooManyLeaves {
-                    expected: expected_num_leaves,
-                });
-            }
-
-            leaves.push(label);
-
-            Ok(())
-        } else if let Some((left, right)) = cursor.children() {
-            collect_rec(left, leaves, expected_num_leaves)?;
-            collect_rec(right, leaves, expected_num_leaves)
-        } else {
-            unreachable!("A node is neither a leaf nor has children");
-        }
-    }
-
     let mut leaves = Vec::with_capacity(expected_num_leaves as usize);
     for cursor in cursors {
-        collect_rec(cursor, &mut leaves, expected_num_leaves)?;
+        for node in cursor.dfs() {
+            if let Some(Label(label)) = node.leaf_label() {
+                if label < 1 || label > expected_num_leaves {
+                    return Err(LeafLintErrors::InvalidLabel {
+                        label,
+                        expected: expected_num_leaves,
+                    });
+                }
+
+                if leaves.len() == expected_num_leaves as usize {
+                    return Err(LeafLintErrors::TooManyLeaves {
+                        expected: expected_num_leaves,
+                    });
+                }
+
+                leaves.push(label);
+            }
+        }
     }
 
     if leaves.len() < expected_num_leaves as usize {

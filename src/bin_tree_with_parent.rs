@@ -1,4 +1,4 @@
-use pace26io::newick::*;
+use pace26io::binary_tree::*;
 use std::{
     cell::RefCell,
     rc::{Rc, Weak},
@@ -115,7 +115,7 @@ impl BottomUpCursor for NodeCursor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pace26io::newick::{BinaryTreeParser, TopDownCursor};
+    use pace26io::{binary_tree::TopDownCursor, newick::BinaryTreeParser};
 
     #[test]
     fn newick_builder() {
