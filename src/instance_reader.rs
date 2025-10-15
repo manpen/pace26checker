@@ -219,7 +219,7 @@ mod tests {
         ));
     }
 
-    macro_rules! test_raises_error {
+    macro_rules! assert_raises_error {
         ($name : ident, $str : expr, $pat : pat) => {
             #[test]
             fn $name() {
@@ -230,7 +230,7 @@ mod tests {
         };
     }
 
-    test_raises_error!(
+    assert_raises_error!(
         missing_tree,
         b"#p 2 2\n(1,2);",
         InstanceVisitorError::TreeCountMismatch {
@@ -239,7 +239,7 @@ mod tests {
         }
     );
 
-    test_raises_error!(
+    assert_raises_error!(
         missing_tree_too_many,
         b"#p 2 2\n(1,2);\n(1,2);\n(1,2);",
         InstanceVisitorError::TreeCountMismatch {
@@ -248,31 +248,31 @@ mod tests {
         }
     );
 
-    test_raises_error!(
+    assert_raises_error!(
         no_header_before_first,
         b"# comment\n(1,2);\n#p 2 2\n(1,2);",
         InstanceVisitorError::NoHeaderBeforeFirstTree { lineno: 1 }
     );
 
-    test_raises_error!(
+    assert_raises_error!(
         no_header,
         b"# comment\n(1,2);\n(1,2);",
         InstanceVisitorError::NoHeaderFound
     );
 
-    test_raises_error!(
+    assert_raises_error!(
         unrecognized_dash_line,
         b"#x 1 1\n(1,2);",
         InstanceVisitorError::UnrecognizedDashLine { lineno: 0 }
     );
 
-    test_raises_error!(
+    assert_raises_error!(
         unrecognized_line,
         b"# comment\nrandom text\n(1,2);",
         InstanceVisitorError::UnrecognizedLine { lineno: 1 }
     );
 
-    test_raises_error!(
+    assert_raises_error!(
         invalid_tree_labels,
         b"#p 1 2\n(1,3);",
         InstanceVisitorError::InvalidLeafLabels {
@@ -285,13 +285,13 @@ mod tests {
         }
     );
 
-    test_raises_error!(
+    assert_raises_error!(
         reader_error,
         b"#p 1 2\n#p 1 2\n(1,2);",
         InstanceVisitorError::PaceParserError(..)
     );
 
-    test_raises_error!(
+    assert_raises_error!(
         invalid_newick,
         b"#p 1 1\n(0,1);\n();",
         InstanceVisitorError::InvalidNewick { lineno: 2, .. }

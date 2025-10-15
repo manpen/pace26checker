@@ -158,7 +158,7 @@ impl SolutionInputVisitor {
 mod tests {
     use super::*;
 
-    macro_rules! raises_error {
+    macro_rules! assert_raises_error {
         ($name : ident, $str : expr, $num_leaves : expr, $pat : pat) => {
             #[test]
             fn $name() {
@@ -169,7 +169,7 @@ mod tests {
         };
     }
 
-    macro_rules! raises_warning {
+    macro_rules! assert_raises_warning {
         ($name : ident, $str : expr, $num_leaves : expr, $pat : pat) => {
             #[test]
             fn $name() {
@@ -180,35 +180,35 @@ mod tests {
         };
     }
 
-    raises_warning!(
+    assert_raises_warning!(
         found_header,
         b"# comment\n#p 1 2\n(1,2);\n(1,2);",
         4,
         SolutionVisitorWarning::FoundHeader { lineno: 1 }
     );
 
-    raises_warning!(
+    assert_raises_warning!(
         unrecognized_dash_line,
         b"#x 1 1\n(1,2);",
         42,
         SolutionVisitorWarning::UnrecognizedDashLine { lineno: 0 }
     );
 
-    raises_warning!(
+    assert_raises_warning!(
         unrecognized_line,
         b"# comment\nrandom text\n(1,2);",
         32,
         SolutionVisitorWarning::UnrecognizedLine { lineno: 1 }
     );
 
-    raises_error!(
+    assert_raises_error!(
         invalid_tree_labels,
         b"(1,3);",
         2,
         SolutionVisitorError::InvalidLeafLabels(..)
     );
 
-    raises_error!(
+    assert_raises_error!(
         invalid_newick,
         b"# comment\n(0,1);\n();",
         4,
