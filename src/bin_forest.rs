@@ -29,12 +29,49 @@ impl BinForest {
 
         self.roots.push(root_in);
     }
+
+    pub fn isolate_tree(&mut self, other: &NodeCursor) -> Result<(), ()> {
+        let root = self.isolate_tree_match(other)?;
+        root.update_topology_subtree();
+        Ok(())
+    }
+
+    fn isolate_tree_match(&mut self, other: &NodeCursor) -> Result<NodeCursor, ()> {
+        if let Some((left, right)) = other.children() {
+            let match_left = self.isolate_tree_match(&left)?;
+            let match_right = self.isolate_tree_match(&right)?;
+            let lca = NodeCursor::lowest_common_ancestor(match_left.clone(), match_right.clone())
+                .ok_or(())?;
+
+            if lca.depth() < other.depth() {
+                return Err(());
+            }
+
+            self.contract_path(&match_left, &lca);
+            self.contract_path(&match_right, &lca);
+
+            Ok(lca)
+        } else if let Some(Label(l)) = other.leaf_label() {
+            self.leaves[l as usize].upgrade().ok_or(())
+        } else {
+            unreachable!()
+        }
+    }
+
+    fn contract_path(&mut self, lower: &NodeCursor, upper: &NodeCursor) {
+        debug_assert!(lower.depth() > upper.depth());
+        let mut builder = BinTreeWithParentBuilder::default();
+        for _ in (upper.depth() + 1)..lower.depth() {
+            let sibling = lower.remove_sibling().unwrap();
+            self.roots.push(builder.make_root(sibling));
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pace26io::newick::BinaryTreeParser;
+    use pace26io::newick::{BinaryTreeParser, NewickWriter};
 
     #[test]
     fn add_tree() {
@@ -59,5 +96,51 @@ mod tests {
 
             assert_eq!(forest.leaves[i].upgrade().unwrap().depth(), *depth);
         }
+    }
+
+    #[test]
+    fn isolate_tree_success() {
+        let host = BinTreeWithParentBuilder::default()
+            .parse_newick_from_str("(((1,2),(3,4)),(5,(6,7)));")
+            .unwrap();
+
+        let pattern = BinTreeWithParentBuilder::default()
+            .parse_newick_from_str("(((1,2),3),5);")
+            .unwrap();
+
+        let mut forest = BinForest::new(7);
+        forest.add_tree(host);
+        forest.isolate_tree(&pattern).unwrap();
+
+        // sort roots by the smallest leafs in them
+        forest.roots.sort_by_cached_key(|c| {
+            c.top_down()
+                .dfs()
+                .filter_map(|u| u.leaf_label().map(|l| l.0))
+                .min()
+                .unwrap()
+        });
+
+        assert_eq!(
+            forest.roots[0].top_down().to_newick_string(),
+            "(((1,2),3),5);"
+        );
+        assert_eq!(forest.roots[1].top_down().to_newick_string(), "4;");
+        assert_eq!(forest.roots[2].top_down().to_newick_string(), "(6,7);");
+    }
+
+    #[test]
+    fn isolate_tree_failed() {
+        let host = BinTreeWithParentBuilder::default()
+            .parse_newick_from_str("(((1,2),(3,4)),(5,(6,7)));")
+            .unwrap();
+
+        let pattern = BinTreeWithParentBuilder::default()
+            .parse_newick_from_str("((1,5),3);")
+            .unwrap();
+
+        let mut forest = BinForest::new(7);
+        forest.add_tree(host);
+        assert!(forest.isolate_tree(&pattern).is_err());
     }
 }
