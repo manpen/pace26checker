@@ -12,13 +12,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          target: x86_64-unknown-linux-musl
-          toolchain: stable
-          override: true
-          profile: minimal
-          components: clippy, rustfmt
+        run: 
+          rustup target add --toolchain stable x86_64-unknown-linux-musl
+          rustup component add rustfmt
+          rustup component add clippy
 
       - name: Cache Cargo registry
         uses: actions/cache@v3
@@ -61,20 +58,9 @@ jobs:
   build_osx:
     runs-on: macos-latest
     steps:
-      # 1. Checkout code
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Install Rust
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-          profile: minimal
-          components: clippy, rustfmt
-
-      # 3. Cache cargo registry & build artifacts
       - name: Cache Cargo registry
         uses: actions/cache@v3
         with:
@@ -107,20 +93,9 @@ jobs:
   build_win:
     runs-on: windows-latest
     steps:
-      # 1. Checkout code
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Install Rust
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-          profile: minimal
-          components: clippy, rustfmt
-
-      # 3. Cache cargo registry & build artifacts
       - name: Cache Cargo registry
         uses: actions/cache@v3
         with:
