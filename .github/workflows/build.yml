@@ -33,6 +33,9 @@ jobs:
         with:
           path: target
           key: cargo-build-linux
+
+      - name: Build (small-release)
+        run: cargo build --profile smaller-release --target x86_64-unknown-linux-musl
       
       - name: Run tests
         run: cargo test --verbose 
@@ -48,9 +51,6 @@ jobs:
 
       - name: Run Cargo Doc
         run: cargo doc --no-deps
-
-      - name: Build
-        run: cargo build --profile smaller-release --target x86_64-unknown-linux-musl
 
       - name: Archive binary
         uses: actions/upload-artifact@v4
