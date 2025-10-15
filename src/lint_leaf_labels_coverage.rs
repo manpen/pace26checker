@@ -77,10 +77,11 @@ pub fn assert_leaf_labels_are_within_range<C: TopDownCursor>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::bin_tree_with_parent::*;
     use pace26io::newick::*;
 
     fn lint_tree(s: &str, expected_num_leaves: u32) -> Result<(), LeafLintErrors> {
-        let tree = BinTreeBuilder::new()
+        let tree = BinTreeWithParentBuilder::default()
             .parse_newick_from_str(s)
             .expect("Failed to parse tree");
 
@@ -139,10 +140,10 @@ mod tests {
 
     #[test]
     fn test_forest() {
-        let trees: Vec<BinTree> = ["(1,2);", "(3,4);"]
+        let trees: Vec<NodeCursor> = ["(1,2);", "(3,4);"]
             .iter()
             .map(|s| {
-                BinTreeBuilder::new()
+                BinTreeWithParentBuilder::default()
                     .parse_newick_from_str(*s)
                     .expect("Failed to parse tree")
             })

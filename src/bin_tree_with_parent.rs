@@ -24,7 +24,7 @@ pub struct Node {
 #[derive(Default)]
 pub struct BinTreeWithParentBuilder {}
 
-impl Buildable for BinTreeWithParentBuilder {
+impl TreeBuilder for BinTreeWithParentBuilder {
     type Node = NodeCursor;
 
     fn new_inner(&mut self, left: Self::Node, right: Self::Node) -> Self::Node {
