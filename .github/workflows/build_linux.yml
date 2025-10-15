@@ -3,9 +3,11 @@ on: [push, pull_request]
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     steps:
-      # 1. Checkout code
+      - name: Install musl
+        run: sudo apt install -y musl-dev musl-tools
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -13,6 +15,7 @@ jobs:
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
+          target: x86_64-unknown-linux-musl
           toolchain: stable
           override: true
           profile: minimal
@@ -25,7 +28,7 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-          key: cargo-registry-windows
+          key: cargo-registry-linux
       
       - name: Cache Cargo build
         uses: actions/cache@v3
@@ -33,20 +36,26 @@ jobs:
           path: target
           key: cargo-build-windows
       
-      - name: Build
-        run: cargo build --profile smaller-release --verbose
-
       - name: Run tests
-        run: cargo test 
+        run: cargo test --verbose 
 
       - name: Run tests (smaller release)
-        run: cargo test --profile smaller-release
+        run: cargo test --verbose --profile smaller-release
+
+      - name: Run Cargo Clippy
+        run: cargo clippy
+
+      - name: Run Cargo Format
+        run: cargo fmt --check
+
+      - name: Run Cargo Doc
+        run: cargo doc --no-deps
 
       - name: Archive binary
         uses: actions/upload-artifact@v4
         with:
-          name: pace26checker-win.exe
-          path: target/smaller-release/checker.exe
+          name: pace26checker-x86_64-linux
+          path: target/x86_64-unknown-linux-musl/smaller-release/checker
 
 
 
