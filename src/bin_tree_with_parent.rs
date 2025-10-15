@@ -11,6 +11,9 @@ pub trait BottomUpCursor: Sized {
 #[derive(Clone)]
 pub struct NodeCursor(NodeRef);
 
+#[derive(Clone, Default)]
+pub struct WeakNodeCursor(WeakNodeRef);
+
 #[derive(Default)]
 pub struct BinTreeWithParentBuilder {}
 
@@ -84,8 +87,16 @@ impl TopDownCursor for NodeCursor {
 }
 
 impl NodeCursor {
+    pub fn depth(&self) -> usize {
+        self.0.borrow().depth
+    }
+
     pub fn top_down(&self) -> NodeCursor {
         self.clone()
+    }
+
+    pub fn downgrade(&self) -> WeakNodeCursor {
+        WeakNodeCursor(Rc::downgrade(&self.0))
     }
 
     pub fn update_topology(&self) {
@@ -106,9 +117,23 @@ impl NodeCursor {
     }
 }
 
+impl WeakNodeCursor {
+    pub fn upgrade(&self) -> Option<NodeCursor> {
+        Some(NodeCursor(self.0.upgrade()?))
+    }
+}
+
 impl BottomUpCursor for NodeCursor {
     fn parent(&self) -> Option<Self> {
         Some(NodeCursor(self.0.borrow().parent.upgrade()?))
+    }
+}
+
+impl PartialEq for NodeCursor {
+    /// Two NodeCursor are equal if they point to the same node address, indiscriminantly
+    /// of the values stored there
+    fn eq(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.0, &other.0)
     }
 }
 
