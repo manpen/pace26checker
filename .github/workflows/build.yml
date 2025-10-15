@@ -1,0 +1,51 @@
+name: Rust CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        # Optional: test different Rust versions
+        rust: [stable]
+
+    steps:
+      # 1. Checkout code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Install Rust
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          override: true
+          profile: minimal
+          components: clippy, rustfmt
+
+      # 3. Cache cargo registry & build artifacts
+      - name: Cache Cargo registry
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-registry-${{ matrix.rust }}-${{ runner.os }}
+      
+      - name: Cache Cargo build
+        uses: actions/cache@v3
+        with:
+          path: target
+          key: cargo-build-${{ matrix.rust }}-${{ runner.os }}
+      
+      # 4. Build the project
+      - name: Build
+        run: cargo build --verbose
+
+      # 5. Run tests
+      - name: Run tests
+        run: cargo test --verbose
