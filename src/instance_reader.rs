@@ -14,7 +14,7 @@ use thiserror::Error;
 pub type Tree = super::bin_tree_with_parent::NodeCursor;
 
 pub struct Instance {
-    pub trees: Vec<Tree>,
+    pub trees: Vec<(usize, Tree)>,
     pub num_leaves: u32,
 }
 
@@ -27,7 +27,7 @@ impl Instance {
         self.num_leaves
     }
 
-    pub fn trees(&self) -> &[Tree] {
+    pub fn trees(&self) -> &[(usize, Tree)] {
         &self.trees
     }
 
@@ -53,7 +53,7 @@ impl Instance {
 
         Self {
             num_leaves: visitor.header.unwrap().1,
-            trees: visitor.trees.into_iter().map(|(_, tree)| tree).collect(),
+            trees: visitor.trees,
         }
     }
 }

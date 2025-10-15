@@ -30,29 +30,33 @@ impl BinForest {
         self.roots.push(root_in);
     }
 
-    pub fn isolate_tree(&mut self, other: &NodeCursor) -> Result<(), ()> {
-        let root = self.isolate_tree_match(other)?;
-        root.update_topology_subtree();
-        Ok(())
+    /// Attempts to extract a subtree according to the MAF rules.
+    /// Any non-matches sibling of the subtree becomes it's own root.
+    pub fn isolate_tree(&mut self, other: &NodeCursor) -> bool {
+        if let Some(root) = self.isolate_tree_match(other) {
+            root.update_topology_subtree();
+            true
+        } else {
+            false
+        }
     }
 
-    fn isolate_tree_match(&mut self, other: &NodeCursor) -> Result<NodeCursor, ()> {
+    fn isolate_tree_match(&mut self, other: &NodeCursor) -> Option<NodeCursor> {
         if let Some((left, right)) = other.children() {
             let match_left = self.isolate_tree_match(&left)?;
             let match_right = self.isolate_tree_match(&right)?;
-            let lca = NodeCursor::lowest_common_ancestor(match_left.clone(), match_right.clone())
-                .ok_or(())?;
+            let lca = NodeCursor::lowest_common_ancestor(match_left.clone(), match_right.clone())?;
 
             if lca.depth() < other.depth() {
-                return Err(());
+                return None;
             }
 
             self.contract_path(&match_left, &lca);
             self.contract_path(&match_right, &lca);
 
-            Ok(lca)
+            Some(lca)
         } else if let Some(Label(l)) = other.leaf_label() {
-            self.leaves[l as usize].upgrade().ok_or(())
+            self.leaves[l as usize].upgrade()
         } else {
             unreachable!()
         }
@@ -110,7 +114,7 @@ mod tests {
 
         let mut forest = BinForest::new(7);
         forest.add_tree(host);
-        forest.isolate_tree(&pattern).unwrap();
+        assert!(forest.isolate_tree(&pattern));
 
         // sort roots by the smallest leafs in them
         forest.roots.sort_by_cached_key(|c| {
@@ -141,6 +145,6 @@ mod tests {
 
         let mut forest = BinForest::new(7);
         forest.add_tree(host);
-        assert!(forest.isolate_tree(&pattern).is_err());
+        assert!(!forest.isolate_tree(&pattern));
     }
 }
