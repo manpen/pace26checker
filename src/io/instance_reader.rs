@@ -1,9 +1,9 @@
-use crate::{bin_tree_with_parent::BinTreeWithParentBuilder, lint_leaf_labels_coverage::*};
+use crate::checks::{bin_tree_with_parent::BinTreeWithParentBuilder, lint_leaf_labels_coverage::*};
 
-use super::options::Opts;
 use std::{
     fs::File,
     io::{BufRead, BufReader},
+    path::Path,
     process::exit,
 };
 
@@ -11,7 +11,7 @@ use log::{error, info, warn};
 use pace26io::{newick::*, pace::reader::*};
 use thiserror::Error;
 
-pub type Tree = super::bin_tree_with_parent::NodeCursor;
+pub type Tree = crate::checks::bin_tree_with_parent::NodeCursor;
 
 pub struct Instance {
     pub trees: Vec<(usize, Tree)>,
@@ -31,9 +31,9 @@ impl Instance {
         &self.trees
     }
 
-    pub fn read(opts: &Opts) -> Self {
-        info!("Read instance from {:?}", opts.instance);
-        let file = File::open(&opts.instance).expect("Failed to open instance file");
+    pub fn read(path: &Path, paranoid: bool) -> Self {
+        info!("Read instance from {path:?}");
+        let file = File::open(path).expect("Failed to open instance file");
         let mut reader = BufReader::new(file);
         let visitor = InstanceInputVisitor::process(&mut reader);
 
@@ -46,7 +46,7 @@ impl Instance {
                 error!(" {e}");
             }
 
-            if !visitor.errors.is_empty() || opts.paranoid {
+            if !visitor.errors.is_empty() || paranoid {
                 exit(1);
             }
         }

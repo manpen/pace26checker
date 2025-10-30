@@ -1,18 +1,17 @@
 use std::{
     fs::File,
     io::{BufRead, BufReader},
+    path::Path,
     process::exit,
 };
 
 use log::{error, info, warn};
 use pace26io::{newick::*, pace::reader::*};
 
-use crate::{
-    bin_tree_with_parent::BinTreeWithParentBuilder, lint_leaf_labels_coverage::*, options::Opts,
-};
+use crate::checks::{bin_tree_with_parent::BinTreeWithParentBuilder, lint_leaf_labels_coverage::*};
 use thiserror::Error;
 
-pub type Tree = super::bin_tree_with_parent::NodeCursor;
+pub type Tree = crate::checks::bin_tree_with_parent::NodeCursor;
 
 pub struct Solution {
     pub trees: Vec<Tree>,
@@ -27,10 +26,9 @@ impl Solution {
         &self.trees
     }
 
-    pub fn read(opts: &Opts, num_leaves: u32) -> Self {
-        info!("Read solution from {:?}", opts.solution);
-        let file =
-            File::open(opts.solution.as_ref().unwrap()).expect("Failed to open Solution file");
+    pub fn read(path: &Path, num_leaves: u32, paranoid: bool) -> Self {
+        info!("Read solution from {path:?}");
+        let file = File::open(path).expect("Failed to open Solution file");
         let mut reader = BufReader::new(file);
         let visitor = SolutionInputVisitor::process(&mut reader, num_leaves);
 
@@ -43,7 +41,7 @@ impl Solution {
                 error!(" {e}");
             }
 
-            if !visitor.errors.is_empty() || opts.paranoid {
+            if !visitor.errors.is_empty() || paranoid {
                 exit(1);
             }
         }
