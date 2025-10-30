@@ -15,11 +15,23 @@ fn main() {
 
         for (lineno, instance_tree) in instance.trees() {
             let mut forest = BinForest::new(instance.num_leaves);
-            forest.add_tree(instance_tree.clone());
+
+            forest = match forest.add_tree(instance_tree.clone()) {
+                Ok(f) => f,
+                Err(e) => {
+                    error!(
+                        "Failed to add input tree in line {} to forest: {}",
+                        lineno + 1,
+                        e
+                    );
+                    exit(1);
+                }
+            };
 
             for subtree in solution.trees() {
-                let is_error = !forest.isolate_tree(subtree);
-                if is_error {
+                if let Some(f) = forest.isolate_tree(subtree) {
+                    forest = f;
+                } else {
                     error!(
                         "Failed to match subtrees of solution against input tree in line {}",
                         lineno + 1

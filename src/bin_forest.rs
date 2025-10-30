@@ -1,9 +1,22 @@
 use crate::bin_tree_with_parent::*;
 use pace26io::binary_tree::*;
+use thiserror::Error;
 
 pub struct BinForest {
     roots: Vec<NodeCursor>,
     leaves: Vec<WeakNodeCursor>,
+}
+
+#[derive(Error, Debug)]
+pub enum TreeInsertionError {
+    #[error("Root is already present in the forest")]
+    RootAlreadyPresent,
+
+    #[error("Leaf {leaf_label} is not in required range of [1, {num_leaves}]")]
+    LeafOutOfRange { leaf_label: u32, num_leaves: u32 },
+
+    #[error("Leaf {leaf_label} is already present in the forest")]
+    LeafAlreadyPresent { leaf_label: u32 },
 }
 
 impl BinForest {
@@ -14,30 +27,60 @@ impl BinForest {
         }
     }
 
-    pub fn add_tree(&mut self, root_in: NodeCursor) {
-        assert!(!self.roots.iter().any(|r| r == &root_in));
+    /// Adds a tree to the forest. Returns error if the tree is incompatible,
+    /// or already (partially) present in the forest. In this case, the forest
+    /// is consumed.
+    ///
+    /// # Remark
+    /// If an error occurs, the forest is left in an undefined state and should
+    /// not be used further. Hence we take ownership of self and only return it
+    /// on success.
+    pub fn add_tree(mut self, root_in: NodeCursor) -> Result<Self, TreeInsertionError> {
+        if self.roots.iter().any(|r| r == &root_in) {
+            return Err(TreeInsertionError::RootAlreadyPresent);
+        }
 
         for node in root_in.top_down().dfs() {
             if let Some(Label(label)) = node.leaf_label() {
                 let label = label as usize;
-                assert!(label > 0);
-                assert!(self.leaves.len() > label);
-                assert!(self.leaves[label].upgrade().is_none()); // otherwise we already have this leaf in the forest
+
+                if label == 0 || label as u32 > (self.leaves.len() - 1) as u32 {
+                    return Err(TreeInsertionError::LeafOutOfRange {
+                        leaf_label: label as u32,
+                        num_leaves: (self.leaves.len() - 1) as u32,
+                    });
+                }
+
+                if self.leaves[label].upgrade().is_some() {
+                    return Err(TreeInsertionError::LeafAlreadyPresent {
+                        leaf_label: label as u32,
+                    });
+                }
+
                 self.leaves[label] = node.downgrade();
             }
         }
 
         self.roots.push(root_in);
+
+        Ok(self)
     }
 
     /// Attempts to extract a subtree according to the MAF rules.
     /// Any non-matches sibling of the subtree becomes it's own root.
-    pub fn isolate_tree(&mut self, other: &NodeCursor) -> bool {
+    /// Returns the updated forest if successful, otherwise the forest
+    /// is consumed.
+    ///
+    /// # Remark
+    /// If an error occurs, the forest is left in an undefined state and should
+    /// not be used further. Hence we take ownership of self and only return it
+    /// on success.
+    pub fn isolate_tree(mut self, other: &NodeCursor) -> Option<Self> {
         if let Some(root) = self.isolate_tree_match(other) {
             root.update_topology_subtree();
-            true
+            Some(self)
         } else {
-            false
+            None
         }
     }
 
@@ -87,8 +130,8 @@ mod tests {
             .unwrap();
 
         let mut forest = BinForest::new(8);
-        forest.add_tree(tree1);
-        forest.add_tree(tree2);
+        forest = forest.add_tree(tree1).unwrap();
+        forest = forest.add_tree(tree2).unwrap();
 
         assert!(forest.leaves[0].upgrade().is_none());
         for (i, depth) in [2, 1, 2, 2, 2, 3, 2, 3].iter().enumerate() {
@@ -113,8 +156,8 @@ mod tests {
             .unwrap();
 
         let mut forest = BinForest::new(7);
-        forest.add_tree(host);
-        assert!(forest.isolate_tree(&pattern));
+        forest = forest.add_tree(host).unwrap();
+        forest = forest.isolate_tree(&pattern).unwrap();
 
         // sort roots by the smallest leafs in them
         forest.roots.sort_by_cached_key(|c| {
@@ -144,7 +187,7 @@ mod tests {
             .unwrap();
 
         let mut forest = BinForest::new(7);
-        forest.add_tree(host);
-        assert!(!forest.isolate_tree(&pattern));
+        forest = forest.add_tree(host).unwrap();
+        assert!(forest.isolate_tree(&pattern).is_none());
     }
 }
