@@ -2,16 +2,51 @@ use std::process::exit;
 
 use log::{error, info};
 use pace26checker::{
-    bin_forest::BinForest, instance_reader::*, options::*, solution_reader::Solution,
+    checks::bin_forest::BinForest, io::instance_reader::*, io::solution_reader::Solution,
 };
+
+use std::path::PathBuf;
+
+use structopt::StructOpt;
+
+#[derive(StructOpt)]
+pub struct Opts {
+    #[structopt()]
+    pub instance: PathBuf,
+
+    #[structopt()]
+    pub solution: Option<PathBuf>,
+
+    #[structopt(short, long)]
+    pub quiet: bool,
+
+    #[structopt(short, long)]
+    pub paranoid: bool,
+}
+
+impl Opts {
+    pub fn process() -> Self {
+        let opts = Opts::from_args();
+
+        env_logger::builder()
+            .filter_level(if opts.quiet {
+                log::LevelFilter::Error
+            } else {
+                log::LevelFilter::Info
+            })
+            .init();
+
+        opts
+    }
+}
 
 fn main() {
     let opts = Opts::process();
 
-    let instance = Instance::read(&opts);
+    let instance = Instance::read(&opts.instance, opts.paranoid);
 
-    if opts.solution.is_some() {
-        let solution = Solution::read(&opts, instance.num_leaves());
+    if let Some(solution_path) = opts.solution.as_ref() {
+        let solution = Solution::read(solution_path, instance.num_leaves(), opts.paranoid);
 
         for (lineno, instance_tree) in instance.trees() {
             let mut forest = BinForest::new(instance.num_leaves);

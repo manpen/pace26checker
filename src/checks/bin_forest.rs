@@ -1,4 +1,4 @@
-use crate::bin_tree_with_parent::*;
+use super::bin_tree_with_parent::*;
 use pace26io::binary_tree::*;
 use thiserror::Error;
 

@@ -63,8 +63,8 @@ pub fn assert_leaf_labels_are_within_range<C: TopDownCursor>(
 
 #[cfg(test)]
 mod tests {
+    use super::super::bin_tree_with_parent::*;
     use super::*;
-    use crate::bin_tree_with_parent::*;
     use pace26io::newick::*;
 
     fn lint_tree(s: &str, expected_num_leaves: u32) -> Result<(), LeafLintErrors> {
