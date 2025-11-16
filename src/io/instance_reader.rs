@@ -15,6 +15,7 @@ pub type Tree = crate::checks::bin_tree_with_parent::NodeCursor;
 
 pub struct Instance {
     pub trees: Vec<(usize, Tree)>,
+    pub stride_lines: Vec<(String, serde_json::Value)>,
     pub num_leaves: u32,
 }
 
@@ -53,6 +54,7 @@ impl Instance {
 
         Self {
             num_leaves: visitor.header.unwrap().1,
+            stride_lines: visitor.stride_lines,
             trees: visitor.trees,
         }
     }
@@ -67,10 +69,11 @@ struct InstanceInputVisitor {
 
     header: Option<(u32, u32)>,
     trees: Vec<(usize, Tree)>,
+    stride_lines: Vec<(String, serde_json::Value)>,
 }
 
 #[derive(Error, Debug)]
-enum InstanceVisitorError {
+pub enum InstanceVisitorError {
     #[error("Line {} contains tree, but no header read yet.", lineno + 1)]
     NoHeaderBeforeFirstTree { lineno: usize },
 
@@ -98,6 +101,13 @@ enum InstanceVisitorError {
 
     #[error("Line {} is neither a comment, header, nor a tree", lineno + 1)]
     UnrecognizedLine { lineno: usize },
+
+    #[error("Line {} has invalid JSON syntax: {0}", lineno + 1)]
+    JsonSyntaxError {
+        lineno: usize,
+        #[source]
+        source: serde_json::Error,
+    },
 
     #[error(transparent)]
     PaceParserError(#[from] pace26io::pace::reader::ReaderError),
@@ -152,6 +162,20 @@ impl InstanceVisitor for InstanceInputVisitor {
     fn visit_unrecognized_line(&mut self, lineno: usize, _line: &str) -> Action {
         self.errors
             .push(InstanceVisitorError::UnrecognizedLine { lineno });
+        Action::Continue
+    }
+
+    fn visit_stride_line(&mut self, lineno: usize, _line: &str, key: &str, value: &str) -> Action {
+        match serde_json::from_str::<serde_json::Value>(value) {
+            Ok(json_value) => {
+                self.stride_lines.push((key.to_string(), json_value));
+            }
+            Err(e) => {
+                self.errors
+                    .push(InstanceVisitorError::JsonSyntaxError { lineno, source: e });
+            }
+        }
+
         Action::Continue
     }
 }
