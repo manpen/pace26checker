@@ -15,6 +15,7 @@ pub type Tree = crate::checks::bin_tree_with_parent::NodeCursor;
 
 pub struct Solution {
     pub trees: Vec<Tree>,
+    pub stride_lines: Vec<(String, serde_json::Value)>,
 }
 
 impl Solution {
@@ -48,6 +49,7 @@ impl Solution {
 
         Self {
             trees: visitor.trees.into_iter().map(|(_, tree)| tree).collect(),
+            stride_lines: visitor.stride_lines,
         }
     }
 }
@@ -57,6 +59,7 @@ struct SolutionInputVisitor {
     errors: Vec<SolutionVisitorError>,
     warnings: Vec<SolutionVisitorWarning>,
     trees: Vec<(usize, Tree)>,
+    stride_lines: Vec<(String, serde_json::Value)>,
 }
 
 #[derive(Error, Debug)]
@@ -69,6 +72,13 @@ enum SolutionVisitorError {
 
     #[error("Solution has invalid leaves: {0}")]
     InvalidLeafLabels(#[from] LeafLintErrors),
+
+    #[error("Line {} has invalid JSON syntax: {0}", lineno + 1)]
+    JsonSyntaxError {
+        lineno: usize,
+        #[source]
+        source: serde_json::Error,
+    },
 
     #[error(transparent)]
     PaceParserError(#[from] pace26io::pace::reader::ReaderError),
@@ -126,6 +136,20 @@ impl InstanceVisitor for SolutionInputVisitor {
     fn visit_unrecognized_line(&mut self, lineno: usize, _line: &str) -> Action {
         self.warnings
             .push(SolutionVisitorWarning::UnrecognizedLine { lineno });
+        Action::Continue
+    }
+
+    fn visit_stride_line(&mut self, lineno: usize, _line: &str, key: &str, value: &str) -> Action {
+        match serde_json::from_str::<serde_json::Value>(value) {
+            Ok(json_value) => {
+                self.stride_lines.push((key.to_string(), json_value));
+            }
+            Err(e) => {
+                self.errors
+                    .push(SolutionVisitorError::JsonSyntaxError { lineno, source: e });
+            }
+        }
+
         Action::Continue
     }
 }
@@ -215,5 +239,12 @@ mod tests {
         b"# comment\n(0,1);\n();",
         4,
         SolutionVisitorError::InvalidNewick { lineno: 2, .. }
+    );
+
+    assert_raises_error!(
+        invalid_stride,
+        b"# comment\n#s key: invalid json\n();",
+        2,
+        SolutionVisitorError::JsonSyntaxError { lineno: 1, .. }
     );
 }
