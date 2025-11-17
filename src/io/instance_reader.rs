@@ -63,13 +63,12 @@ impl Instance {
 //////////////////////////////////////////////////////////////////
 
 #[derive(Default)]
-struct InstanceInputVisitor {
-    errors: Vec<InstanceVisitorError>,
-    warnings: Vec<InstanceVisitorWarning>,
-
-    header: Option<(u32, u32)>,
-    trees: Vec<(usize, Tree)>,
-    stride_lines: Vec<(String, serde_json::Value)>,
+pub struct InstanceInputVisitor {
+    pub errors: Vec<InstanceVisitorError>,
+    pub warnings: Vec<InstanceVisitorWarning>,
+    pub header: Option<(u32, u32)>,
+    pub trees: Vec<(usize, Tree)>,
+    pub stride_lines: Vec<(String, serde_json::Value)>,
 }
 
 #[derive(Error, Debug)]
@@ -114,7 +113,7 @@ pub enum InstanceVisitorError {
 }
 
 #[derive(Debug, Error, PartialEq)]
-enum InstanceVisitorWarning {
+pub enum InstanceVisitorWarning {
     #[error("Line {} has extra whitespace", lineno + 1)]
     ExtraWhitespace { lineno: usize },
 }
@@ -181,7 +180,7 @@ impl InstanceVisitor for InstanceInputVisitor {
 }
 
 impl InstanceInputVisitor {
-    fn process(reader: &mut impl BufRead) -> InstanceInputVisitor {
+    pub fn process(reader: &mut impl BufRead) -> InstanceInputVisitor {
         let mut visitor = InstanceInputVisitor::default();
         let mut instance_reader = InstanceReader::new(&mut visitor);
 

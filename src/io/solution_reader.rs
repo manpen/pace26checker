@@ -55,15 +55,15 @@ impl Solution {
 }
 
 #[derive(Default)]
-struct SolutionInputVisitor {
-    errors: Vec<SolutionVisitorError>,
-    warnings: Vec<SolutionVisitorWarning>,
-    trees: Vec<(usize, Tree)>,
-    stride_lines: Vec<(String, serde_json::Value)>,
+pub struct SolutionInputVisitor {
+    pub errors: Vec<SolutionVisitorError>,
+    pub warnings: Vec<SolutionVisitorWarning>,
+    pub trees: Vec<(usize, Tree)>,
+    pub stride_lines: Vec<(String, serde_json::Value)>,
 }
 
 #[derive(Error, Debug)]
-enum SolutionVisitorError {
+pub enum SolutionVisitorError {
     #[error("Line {} contains invalid Newick string: {newick_error}", lineno + 1)]
     InvalidNewick {
         lineno: usize,
@@ -85,7 +85,7 @@ enum SolutionVisitorError {
 }
 
 #[derive(Debug, Error, PartialEq)]
-enum SolutionVisitorWarning {
+pub enum SolutionVisitorWarning {
     #[error("Line {} has extra whitespace", lineno + 1)]
     ExtraWhitespace { lineno: usize },
 
@@ -155,7 +155,7 @@ impl InstanceVisitor for SolutionInputVisitor {
 }
 
 impl SolutionInputVisitor {
-    fn process(reader: &mut impl BufRead, num_leaves: u32) -> SolutionInputVisitor {
+    pub fn process(reader: &mut impl BufRead, num_leaves: u32) -> SolutionInputVisitor {
         let mut visitor = SolutionInputVisitor::default();
         let mut solution_reader = InstanceReader::new(&mut visitor);
 
