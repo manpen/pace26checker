@@ -210,6 +210,18 @@ impl PartialEq for NodeCursor {
     }
 }
 
+impl std::fmt::Debug for NodeCursor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some((l, r)) = self.children() {
+            write!(f, "({:?},{:?})", l, r)
+        } else if let Some(l) = self.leaf_label() {
+            write!(f, "{}", l.0)
+        } else {
+            unreachable!();
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
