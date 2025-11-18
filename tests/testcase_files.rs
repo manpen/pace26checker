@@ -81,11 +81,13 @@ fn invalid_cases() {
             }
         }
 
+        args.push("-p".into());
+
         // run binary and make sure it report non-success
         let output = command().args(args).output().expect("failed to run binary");
-        assert!(!output.status.success());
+        assert!(!output.status.success(), "{input_path:?}");
 
-        let reader = BufReader::new(File::open(input_path).expect("Open instance file"));
+        let reader = BufReader::new(File::open(&input_path).expect("Open instance file"));
         let patterns: Vec<_> = reader
             .lines()
             .filter_map(|l| l.ok())
@@ -101,7 +103,7 @@ fn invalid_cases() {
             let re = regex::bytes::Regex::new(&pattern).expect("Valid pattern");
             assert!(
                 re.find(&output.stderr).is_some(),
-                "Pattern not found: {pattern}. Found: {}",
+                "Pattern not found: {pattern}. Found: {}\n{input_path:?}",
                 String::from_utf8(output.stderr).unwrap()
             );
         }
