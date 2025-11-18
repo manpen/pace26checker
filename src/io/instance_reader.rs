@@ -4,14 +4,23 @@ use std::{
     fs::File,
     io::{BufRead, BufReader},
     path::Path,
-    process::exit,
 };
 
-use log::{error, info, warn};
 use pace26io::{newick::*, pace::reader::*};
 use thiserror::Error;
+use tracing::{debug, error, warn};
 
 pub type Tree = crate::checks::bin_tree_with_parent::NodeCursor;
+
+#[derive(Debug, Error)]
+pub enum InstanceReaderError {
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+    #[error("Error while reading instance: {0}")]
+    VisitorError(#[from] InstanceVisitorError),
+    #[error("Warning while reading instance (paranoid mode): {0}")]
+    VisitorWarning(#[from] InstanceVisitorWarning),
+}
 
 pub struct Instance {
     pub trees: Vec<(usize, Tree)>,
@@ -32,11 +41,11 @@ impl Instance {
         &self.trees
     }
 
-    pub fn read(path: &Path, paranoid: bool) -> Self {
-        info!("Read instance from {path:?}");
-        let file = File::open(path).expect("Failed to open instance file");
+    pub fn read(path: &Path, paranoid: bool) -> Result<Self, InstanceReaderError> {
+        debug!("Read instance from {path:?}");
+        let file = File::open(path)?;
         let mut reader = BufReader::new(file);
-        let visitor = InstanceInputVisitor::process(&mut reader);
+        let mut visitor = InstanceInputVisitor::process(&mut reader);
 
         if !visitor.errors.is_empty() || !visitor.warnings.is_empty() {
             for w in &visitor.warnings {
@@ -47,16 +56,22 @@ impl Instance {
                 error!(" {e}");
             }
 
-            if !visitor.errors.is_empty() || paranoid {
-                exit(1);
+            if !visitor.errors.is_empty() {
+                return Err(InstanceReaderError::VisitorError(visitor.errors.remove(0)));
+            }
+
+            if paranoid {
+                return Err(InstanceReaderError::VisitorWarning(
+                    visitor.warnings.remove(0),
+                ));
             }
         }
 
-        Self {
+        Ok(Self {
             num_leaves: visitor.header.unwrap().1,
             stride_lines: visitor.stride_lines,
             trees: visitor.trees,
-        }
+        })
     }
 }
 

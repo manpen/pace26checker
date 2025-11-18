@@ -2,19 +2,29 @@ use std::{
     fs::File,
     io::{BufRead, BufReader},
     path::Path,
-    process::exit,
 };
 
-use log::{error, info, warn};
 use pace26io::{newick::*, pace::reader::*};
+use tracing::{debug, error, warn};
 
 use crate::checks::{bin_tree_with_parent::BinTreeWithParentBuilder, lint_leaf_labels_coverage::*};
 use thiserror::Error;
 
 pub type Tree = crate::checks::bin_tree_with_parent::NodeCursor;
 
+#[derive(Debug, Error)]
+pub enum SolutionReaderError {
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+    #[error("Error while reading instance: {0}")]
+    VisitorError(#[from] SolutionVisitorError),
+
+    #[error("Warning while reading solution (paranoid mode): {0}")]
+    VisitorWarning(#[from] SolutionVisitorWarning),
+}
+
 pub struct Solution {
-    pub trees: Vec<Tree>,
+    pub trees: Vec<(usize, Tree)>,
     pub stride_lines: Vec<(String, serde_json::Value)>,
 }
 
@@ -23,15 +33,15 @@ impl Solution {
         self.trees.len()
     }
 
-    pub fn trees(&self) -> &[Tree] {
+    pub fn trees(&self) -> &[(usize, Tree)] {
         &self.trees
     }
 
-    pub fn read(path: &Path, num_leaves: u32, paranoid: bool) -> Self {
-        info!("Read solution from {path:?}");
-        let file = File::open(path).expect("Failed to open Solution file");
+    pub fn read(path: &Path, num_leaves: u32, paranoid: bool) -> Result<Self, SolutionReaderError> {
+        debug!("Read solution from {path:?}");
+        let file = File::open(path)?;
         let mut reader = BufReader::new(file);
-        let visitor = SolutionInputVisitor::process(&mut reader, num_leaves);
+        let mut visitor = SolutionInputVisitor::process(&mut reader, num_leaves);
 
         if !visitor.errors.is_empty() || !visitor.warnings.is_empty() {
             for w in &visitor.warnings {
@@ -42,15 +52,21 @@ impl Solution {
                 error!(" {e}");
             }
 
-            if !visitor.errors.is_empty() || paranoid {
-                exit(1);
+            if !visitor.errors.is_empty() {
+                return Err(SolutionReaderError::VisitorError(visitor.errors.remove(0)));
+            }
+
+            if paranoid {
+                return Err(SolutionReaderError::VisitorWarning(
+                    visitor.warnings.remove(0),
+                ));
             }
         }
 
-        Self {
-            trees: visitor.trees.into_iter().map(|(_, tree)| tree).collect(),
+        Ok(Self {
+            trees: std::mem::take(&mut visitor.trees),
             stride_lines: visitor.stride_lines,
-        }
+        })
     }
 }
 
