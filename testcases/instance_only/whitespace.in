@@ -1,3 +1,4 @@
 # REQUIRE: whitespace
+#p 2 2
 (1,2); 
 (2,1);
