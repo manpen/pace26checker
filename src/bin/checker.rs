@@ -23,10 +23,11 @@ pub struct Arguments {
 
 fn check(args: &Arguments) -> Result<(), CheckerError> {
     if let Some(solution_path) = args.solution.as_ref() {
-        let size = check_instance_and_solution(&args.instance, solution_path, args.paranoid)?;
-        println!("Trees in solution: {size}");
+        let (_inst, solution) =
+            check_instance_and_solution(&args.instance, solution_path, args.paranoid)?;
+        println!("Trees in solution: {}", solution.num_trees());
     } else {
-        check_instance_only(&args.instance, args.paranoid)?;
+        let _ = check_instance_only(&args.instance, args.paranoid)?;
     }
     Ok(())
 }

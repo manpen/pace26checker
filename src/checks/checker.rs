@@ -30,9 +30,8 @@ pub enum CheckerError {
     SolutionReaderError(#[from] SolutionReaderError),
 }
 
-pub fn check_instance_only(path: &Path, paranoid: bool) -> Result<(), CheckerError> {
-    let _ = Instance::read(path, paranoid)?;
-    Ok(())
+pub fn check_instance_only(path: &Path, paranoid: bool) -> Result<Instance, CheckerError> {
+    Ok(Instance::read(path, paranoid)?)
 }
 
 // Checks feasiblity of solution for instance and if successful returns solution size
@@ -40,7 +39,7 @@ pub fn check_instance_and_solution(
     instance_path: &Path,
     solution_path: &Path,
     paranoid: bool,
-) -> Result<usize, CheckerError> {
+) -> Result<(Instance, Solution), CheckerError> {
     let instance = Instance::read(instance_path, paranoid)?;
     let solution = Solution::read(solution_path, instance.num_leaves(), paranoid)?;
 
@@ -71,5 +70,5 @@ pub fn check_instance_and_solution(
 
     debug!("Feasible solution found");
 
-    Ok(solution.trees().len())
+    Ok((instance, solution))
 }
