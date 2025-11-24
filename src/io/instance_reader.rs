@@ -112,7 +112,7 @@ pub enum InstanceVisitorError {
     },
 
     #[error("Line {} starts with `#`, but is neither a header ('#p') nor a comment ('# ')", lineno + 1)]
-    UnrecognizedDashLine { lineno: usize },
+    UnrecognizedHashLine { lineno: usize },
 
     #[error("Line {} is neither a comment, header, nor a tree", lineno + 1)]
     UnrecognizedLine { lineno: usize },
@@ -170,9 +170,9 @@ impl InstanceVisitor for InstanceInputVisitor {
         Action::Continue
     }
 
-    fn visit_unrecognized_dash_line(&mut self, lineno: usize, _line: &str) -> Action {
+    fn visit_unrecognized_hash_line(&mut self, lineno: usize, _line: &str) -> Action {
         self.errors
-            .push(InstanceVisitorError::UnrecognizedDashLine { lineno });
+            .push(InstanceVisitorError::UnrecognizedHashLine { lineno });
         Action::Continue
     }
 
@@ -304,9 +304,9 @@ mod tests {
     );
 
     assert_raises_error!(
-        unrecognized_dash_line,
+        unrecognized_hash_line,
         b"#z 1 1\n(1,2);",
-        InstanceVisitorError::UnrecognizedDashLine { lineno: 0 }
+        InstanceVisitorError::UnrecognizedHashLine { lineno: 0 }
     );
 
     assert_raises_error!(
