@@ -124,7 +124,7 @@ impl InstanceVisitor for SolutionInputVisitor {
 
     fn visit_tree(&mut self, lineno: usize, line: &str) -> Action {
         let mut builder = BinTreeWithParentBuilder::default();
-        match builder.parse_newick_from_str(line) {
+        match builder.parse_newick_from_str(line, Default::default()) {
             Ok(tree) => self.trees.push((lineno, tree)),
             Err(e) => {
                 self.errors.push(SolutionVisitorError::InvalidNewick {

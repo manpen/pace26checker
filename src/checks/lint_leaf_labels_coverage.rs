@@ -69,7 +69,7 @@ mod tests {
 
     fn lint_tree(s: &str, expected_num_leaves: u32) -> Result<(), LeafLintErrors> {
         let tree = BinTreeWithParentBuilder::default()
-            .parse_newick_from_str(s)
+            .parse_newick_from_str(s, Default::default())
             .expect("Failed to parse tree");
 
         assert_leaf_labels_are_within_range(std::iter::once(tree.top_down()), expected_num_leaves)
@@ -131,7 +131,7 @@ mod tests {
             .iter()
             .map(|s| {
                 BinTreeWithParentBuilder::default()
-                    .parse_newick_from_str(*s)
+                    .parse_newick_from_str(*s, Default::default())
                     .expect("Failed to parse tree")
             })
             .collect();

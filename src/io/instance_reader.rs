@@ -6,7 +6,7 @@ use std::{
     path::Path,
 };
 
-use pace26io::{newick::*, pace::reader::*};
+use pace26io::{binary_tree::NodeIdx, newick::*, pace::reader::*};
 use thiserror::Error;
 use tracing::{debug, error, warn};
 
@@ -84,6 +84,7 @@ pub struct InstanceInputVisitor {
     pub header: Option<(u32, u32)>,
     pub trees: Vec<(usize, Tree)>,
     pub stride_lines: Vec<(String, serde_json::Value)>,
+    next_root: NodeIdx,
 }
 
 #[derive(Error, Debug)]
@@ -137,7 +138,7 @@ impl InstanceVisitor for InstanceInputVisitor {
     fn visit_header(&mut self, _lineno: usize, num_trees: usize, num_leafs: usize) -> Action {
         assert!(self.header.is_none()); // double headers should be caught by the parser
         self.header = Some((num_trees as u32, num_leafs as u32));
-
+        self.next_root = NodeIdx(1 + num_leafs as u32);
         Action::Continue
     }
 
@@ -148,7 +149,7 @@ impl InstanceVisitor for InstanceInputVisitor {
         }
 
         let mut builder = BinTreeWithParentBuilder::default();
-        match builder.parse_newick_from_str(line) {
+        match builder.parse_newick_from_str(line, self.next_root) {
             Ok(tree) => self.trees.push((lineno, tree)),
             Err(e) => {
                 self.errors.push(InstanceVisitorError::InvalidNewick {
@@ -157,6 +158,8 @@ impl InstanceVisitor for InstanceInputVisitor {
                 });
             }
         }
+
+        self.next_root.0 += self.header.map(|h| h.1).unwrap_or(0);
 
         Action::Continue
     }
