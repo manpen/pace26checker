@@ -305,7 +305,7 @@ mod tests {
 
     assert_raises_error!(
         unrecognized_dash_line,
-        b"#x 1 1\n(1,2);",
+        b"#z 1 1\n(1,2);",
         InstanceVisitorError::UnrecognizedDashLine { lineno: 0 }
     );
 

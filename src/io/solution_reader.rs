@@ -231,7 +231,7 @@ mod tests {
 
     assert_raises_warning!(
         unrecognized_dash_line,
-        b"#x 1 1\n(1,2);",
+        b"#z 1 1\n(1,2);",
         42,
         SolutionVisitorWarning::UnrecognizedDashLine { lineno: 0 }
     );
