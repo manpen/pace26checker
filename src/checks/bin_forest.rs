@@ -113,6 +113,15 @@ impl BinForest {
             self.roots.push(builder.make_root(sibling));
         }
     }
+
+    /// Slice of all roots in the forest
+    pub fn roots(&self) -> &[NodeCursor] {
+        &self.roots
+    }
+
+    pub fn leaf(&self, label: Label) -> WeakNodeCursor {
+        self.leaves[label.0 as usize].clone()
+    }
 }
 
 #[cfg(test)]
@@ -123,10 +132,10 @@ mod tests {
     #[test]
     fn add_tree() {
         let tree1 = BinTreeWithParentBuilder::default()
-            .parse_newick_from_str("((1,3),(5,7));")
+            .parse_newick_from_str("((1,3),(5,7));", Default::default())
             .unwrap();
         let tree2 = BinTreeWithParentBuilder::default()
-            .parse_newick_from_str("(2,(4,(6,8)));")
+            .parse_newick_from_str("(2,(4,(6,8)));", Default::default())
             .unwrap();
 
         let mut forest = BinForest::new(8);
@@ -148,11 +157,11 @@ mod tests {
     #[test]
     fn isolate_tree_success() {
         let host = BinTreeWithParentBuilder::default()
-            .parse_newick_from_str("(((1,2),(3,4)),(5,(6,7)));")
+            .parse_newick_from_str("(((1,2),(3,4)),(5,(6,7)));", Default::default())
             .unwrap();
 
         let pattern = BinTreeWithParentBuilder::default()
-            .parse_newick_from_str("(((1,2),3),5);")
+            .parse_newick_from_str("(((1,2),3),5);", Default::default())
             .unwrap();
 
         let mut forest = BinForest::new(7);
@@ -160,7 +169,7 @@ mod tests {
         forest = forest.isolate_tree(&pattern).unwrap();
 
         // sort roots by the smallest leafs in them
-        forest.roots.sort_by_cached_key(|c| {
+        forest.roots.sort_by_key(|c| {
             c.top_down()
                 .dfs()
                 .filter_map(|u| u.leaf_label().map(|l| l.0))
@@ -179,11 +188,11 @@ mod tests {
     #[test]
     fn isolate_tree_failed() {
         let host = BinTreeWithParentBuilder::default()
-            .parse_newick_from_str("(((1,2),(3,4)),(5,(6,7)));")
+            .parse_newick_from_str("(((1,2),(3,4)),(5,(6,7)));", Default::default())
             .unwrap();
 
         let pattern = BinTreeWithParentBuilder::default()
-            .parse_newick_from_str("((1,5),3);")
+            .parse_newick_from_str("((1,5),3);", Default::default())
             .unwrap();
 
         let mut forest = BinForest::new(7);

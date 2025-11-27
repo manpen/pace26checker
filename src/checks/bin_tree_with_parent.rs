@@ -20,6 +20,7 @@ pub struct BinTreeWithParentBuilder {}
 pub struct Node {
     parent: WeakNodeRef,
     depth: usize,
+    id: NodeIdx,
     children: Children,
 }
 
@@ -34,10 +35,11 @@ type WeakNodeRef = Weak<RefCell<Node>>;
 impl TreeBuilder for BinTreeWithParentBuilder {
     type Node = NodeCursor;
 
-    fn new_inner(&mut self, left: Self::Node, right: Self::Node) -> Self::Node {
+    fn new_inner(&mut self, id: NodeIdx, left: Self::Node, right: Self::Node) -> Self::Node {
         let node_ref = Rc::new(RefCell::new(Node {
             parent: Weak::new(),
             depth: usize::MAX,
+            id,
             children: Children::Inner {
                 left: left.0,
                 right: right.0,
@@ -57,6 +59,7 @@ impl TreeBuilder for BinTreeWithParentBuilder {
     fn new_leaf(&mut self, label: Label) -> Self::Node {
         NodeCursor(Rc::new(RefCell::new(Node {
             parent: Weak::new(),
+            id: label.into(),
             children: Children::Leaf { label },
             depth: usize::MAX,
         })))
@@ -65,6 +68,69 @@ impl TreeBuilder for BinTreeWithParentBuilder {
     fn make_root(&mut self, root: Self::Node) -> Self::Node {
         root.update_topology();
         root
+    }
+}
+
+impl NodeCursor {
+    /// Deep-clones the subtree rooted in this node and updates the clone's topology,
+    /// i.e. fixing depth and parent-links.
+    pub fn clone_and_rebuild(&self) -> NodeCursor {
+        self.clone_tree_inner(0)
+    }
+
+    fn clone_tree_inner(&self, depth: usize) -> NodeCursor {
+        let inner_node = self.0.borrow();
+        match &inner_node.children {
+            Children::Inner { left, right } => {
+                let left_clone = NodeCursor(left.clone()).clone_tree_inner(depth + 1).0;
+                let right_clone = NodeCursor(right.clone()).clone_tree_inner(depth + 1).0;
+
+                let new_self = NodeCursor(Rc::new(RefCell::new(Node {
+                    parent: WeakNodeRef::new(),
+                    depth,
+                    id: inner_node.id,
+                    children: Children::Inner {
+                        left: left_clone.clone(),
+                        right: right_clone.clone(),
+                    },
+                })));
+
+                left_clone.borrow_mut().parent = Rc::downgrade(&new_self.0);
+                right_clone.borrow_mut().parent = Rc::downgrade(&new_self.0);
+
+                new_self
+            }
+
+            Children::Leaf { label } => NodeCursor(Rc::new(RefCell::new(Node {
+                parent: WeakNodeRef::new(),
+                depth,
+                id: inner_node.id,
+                children: Children::Leaf { label: *label },
+            }))),
+        }
+    }
+
+    /// Sorts children such that the child with the smallest leaf in its subtree sits left
+    /// and returns the smallest leaf found.
+    pub fn normalize_child_order(&self) -> Label {
+        if let Some((left, right)) = self.children() {
+            let min_left = left.normalize_child_order();
+            let min_right = right.normalize_child_order();
+
+            if min_left <= min_right {
+                return min_left;
+            }
+
+            let mut inner_mut = self.0.borrow_mut();
+            inner_mut.children = Children::Inner {
+                left: right.0,
+                right: left.0,
+            };
+
+            return min_right;
+        }
+
+        self.leaf_label().unwrap()
     }
 }
 
@@ -222,6 +288,12 @@ impl std::fmt::Debug for NodeCursor {
     }
 }
 
+impl TreeWithNodeIdx for NodeCursor {
+    fn node_idx(&self) -> NodeIdx {
+        self.0.borrow().id
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -237,7 +309,7 @@ mod tests {
     #[test]
     fn newick_builder() {
         let tree = BinTreeWithParentBuilder::default()
-            .parse_newick_from_str("((1,2),3);")
+            .parse_newick_from_str("((1,2),3);", Default::default())
             .unwrap();
 
         assert_eq!(tree.0.borrow().depth, 0);
@@ -270,7 +342,7 @@ mod tests {
     #[test]
     fn bottom_up_cursor() {
         let tree = BinTreeWithParentBuilder::default()
-            .parse_newick_from_str("((1,2),3);")
+            .parse_newick_from_str("((1,2),3);", Default::default())
             .unwrap();
 
         let leaf = tree.top_down().left_child().unwrap().left_child().unwrap();
@@ -283,7 +355,7 @@ mod tests {
     #[test]
     fn lowest_common_ancestor() {
         let tree = BinTreeWithParentBuilder::default()
-            .parse_newick_from_str("((1,2),(3,(4,5)));")
+            .parse_newick_from_str("((1,2),(3,(4,5)));", Default::default())
             .unwrap();
 
         fn lca_depth(a: &NodeCursor, b: &NodeCursor) -> Option<usize> {
@@ -304,7 +376,7 @@ mod tests {
         assert_eq!(lca_depth(&leaf4, &leaf5), Some(2));
 
         let tree2 = BinTreeWithParentBuilder::default()
-            .parse_newick_from_str("((1,2),(3,(4,5)));")
+            .parse_newick_from_str("((1,2),(3,(4,5)));", Default::default())
             .unwrap();
 
         let leaf1_in_tree2 = get_leaf(&tree2, 1);
@@ -314,7 +386,7 @@ mod tests {
     #[test]
     fn sibling() {
         let tree = BinTreeWithParentBuilder::default()
-            .parse_newick_from_str("((1,2),(3,(4,5)));")
+            .parse_newick_from_str("((1,2),(3,(4,5)));", Default::default())
             .unwrap();
 
         assert_eq!(
@@ -351,7 +423,7 @@ mod tests {
     #[test]
     fn remove_sibling() {
         let tree = BinTreeWithParentBuilder::default()
-            .parse_newick_from_str("((1,2),3);")
+            .parse_newick_from_str("((1,2),3);", Default::default())
             .unwrap();
 
         let l1 = get_leaf(&tree, 1);

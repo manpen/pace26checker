@@ -106,7 +106,7 @@ pub enum SolutionVisitorWarning {
     ExtraWhitespace { lineno: usize },
 
     #[error("Line {} starts with `#`, but is neither a header ('#p') nor a comment ('# ')", lineno + 1)]
-    UnrecognizedDashLine { lineno: usize },
+    UnrecognizedHashLine { lineno: usize },
 
     #[error("Line {} is neither a comment, header, nor a tree", lineno + 1)]
     UnrecognizedLine { lineno: usize },
@@ -124,7 +124,7 @@ impl InstanceVisitor for SolutionInputVisitor {
 
     fn visit_tree(&mut self, lineno: usize, line: &str) -> Action {
         let mut builder = BinTreeWithParentBuilder::default();
-        match builder.parse_newick_from_str(line) {
+        match builder.parse_newick_from_str(line, Default::default()) {
             Ok(tree) => self.trees.push((lineno, tree)),
             Err(e) => {
                 self.errors.push(SolutionVisitorError::InvalidNewick {
@@ -143,9 +143,9 @@ impl InstanceVisitor for SolutionInputVisitor {
         Action::Continue
     }
 
-    fn visit_unrecognized_dash_line(&mut self, lineno: usize, _line: &str) -> Action {
+    fn visit_unrecognized_hash_line(&mut self, lineno: usize, _line: &str) -> Action {
         self.warnings
-            .push(SolutionVisitorWarning::UnrecognizedDashLine { lineno });
+            .push(SolutionVisitorWarning::UnrecognizedHashLine { lineno });
         Action::Continue
     }
 
@@ -230,10 +230,10 @@ mod tests {
     );
 
     assert_raises_warning!(
-        unrecognized_dash_line,
-        b"#x 1 1\n(1,2);",
+        unrecognized_hash_line,
+        b"#z 1 1\n(1,2);",
         42,
-        SolutionVisitorWarning::UnrecognizedDashLine { lineno: 0 }
+        SolutionVisitorWarning::UnrecognizedHashLine { lineno: 0 }
     );
 
     assert_raises_warning!(
