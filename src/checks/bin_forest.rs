@@ -113,6 +113,15 @@ impl BinForest {
             self.roots.push(builder.make_root(sibling));
         }
     }
+
+    /// Slice of all roots in the forest
+    pub fn roots(&self) -> &[NodeCursor] {
+        &self.roots
+    }
+
+    pub fn leaf(&self, label: Label) -> WeakNodeCursor {
+        self.leaves[label.0 as usize].clone()
+    }
 }
 
 #[cfg(test)]
@@ -160,7 +169,7 @@ mod tests {
         forest = forest.isolate_tree(&pattern).unwrap();
 
         // sort roots by the smallest leafs in them
-        forest.roots.sort_by_cached_key(|c| {
+        forest.roots.sort_by_key(|c| {
             c.top_down()
                 .dfs()
                 .filter_map(|u| u.leaf_label().map(|l| l.0))
