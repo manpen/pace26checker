@@ -71,6 +71,69 @@ impl TreeBuilder for BinTreeWithParentBuilder {
     }
 }
 
+impl NodeCursor {
+    /// Deep-clones the subtree rooted in this node and updates the clone's topology,
+    /// i.e. fixing depth and parent-links.
+    pub fn clone_and_rebuild(&self) -> NodeCursor {
+        self.clone_tree_inner(0)
+    }
+
+    fn clone_tree_inner(&self, depth: usize) -> NodeCursor {
+        let inner_node = self.0.borrow();
+        match &inner_node.children {
+            Children::Inner { left, right } => {
+                let left_clone = NodeCursor(left.clone()).clone_tree_inner(depth + 1).0;
+                let right_clone = NodeCursor(right.clone()).clone_tree_inner(depth + 1).0;
+
+                let new_self = NodeCursor(Rc::new(RefCell::new(Node {
+                    parent: WeakNodeRef::new(),
+                    depth,
+                    id: inner_node.id,
+                    children: Children::Inner {
+                        left: left_clone.clone(),
+                        right: right_clone.clone(),
+                    },
+                })));
+
+                left_clone.borrow_mut().parent = Rc::downgrade(&new_self.0);
+                right_clone.borrow_mut().parent = Rc::downgrade(&new_self.0);
+
+                new_self
+            }
+
+            Children::Leaf { label } => NodeCursor(Rc::new(RefCell::new(Node {
+                parent: WeakNodeRef::new(),
+                depth,
+                id: inner_node.id,
+                children: Children::Leaf { label: *label },
+            }))),
+        }
+    }
+
+    /// Sorts children such that the child with the smallest leaf in its subtree sits left
+    /// and returns the smallest leaf found.
+    pub fn normalize_child_order(&self) -> Label {
+        if let Some((left, right)) = self.children() {
+            let min_left = left.normalize_child_order();
+            let min_right = right.normalize_child_order();
+
+            if min_left <= min_right {
+                return min_left;
+            }
+
+            let mut inner_mut = self.0.borrow_mut();
+            inner_mut.children = Children::Inner {
+                left: right.0,
+                right: left.0,
+            };
+
+            return min_right;
+        }
+
+        self.leaf_label().unwrap()
+    }
+}
+
 impl TopDownCursor for NodeCursor {
     fn children(&self) -> Option<(Self, Self)> {
         match &self.0.borrow().children {

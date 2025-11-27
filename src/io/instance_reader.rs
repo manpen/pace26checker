@@ -28,6 +28,22 @@ pub struct Instance {
     pub num_leaves: u32,
 }
 
+impl Clone for Instance {
+    fn clone(&self) -> Self {
+        let trees = self
+            .trees
+            .iter()
+            .map(|(l, t)| (*l, t.clone_and_rebuild()))
+            .collect();
+
+        Self {
+            trees,
+            stride_lines: self.stride_lines.clone(),
+            num_leaves: self.num_leaves,
+        }
+    }
+}
+
 impl Instance {
     pub fn num_trees(&self) -> u32 {
         self.trees.len() as u32
@@ -159,7 +175,7 @@ impl InstanceVisitor for InstanceInputVisitor {
             }
         }
 
-        self.next_root.0 += self.header.map(|h| h.1).unwrap_or(0);
+        self.next_root.0 += self.header.map(|h| h.1.saturating_sub(1)).unwrap_or(0);
 
         Action::Continue
     }
