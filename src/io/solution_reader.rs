@@ -16,11 +16,15 @@ pub type Tree = crate::checks::bin_tree_with_parent::NodeCursor;
 pub enum SolutionReaderError {
     #[error(transparent)]
     Io(#[from] std::io::Error),
+
     #[error("Error while reading instance: {0}")]
     VisitorError(#[from] SolutionVisitorError),
 
     #[error("Warning while reading solution (paranoid mode): {0}")]
     VisitorWarning(#[from] SolutionVisitorWarning),
+
+    #[error("No tree was found in solution")]
+    EmptySolution,
 }
 
 pub struct Solution {
@@ -43,15 +47,20 @@ impl Solution {
         let mut reader = BufReader::new(file);
         let mut visitor = SolutionInputVisitor::process(&mut reader, num_leaves);
 
+        for w in &visitor.warnings {
+            warn!(" {w}");
+        }
+
+        for e in &visitor.errors {
+            error!(" {e}");
+        }
+
+        if !visitor.found_tree_line {
+            error!(" {}", SolutionReaderError::EmptySolution);
+            return Err(SolutionReaderError::EmptySolution);
+        }
+
         if !visitor.errors.is_empty() || !visitor.warnings.is_empty() {
-            for w in &visitor.warnings {
-                warn!(" {w}");
-            }
-
-            for e in &visitor.errors {
-                error!(" {e}");
-            }
-
             if !visitor.errors.is_empty() {
                 return Err(SolutionReaderError::VisitorError(visitor.errors.remove(0)));
             }
@@ -76,6 +85,7 @@ pub struct SolutionInputVisitor {
     pub warnings: Vec<SolutionVisitorWarning>,
     pub trees: Vec<(usize, Tree)>,
     pub stride_lines: Vec<(String, serde_json::Value)>,
+    pub found_tree_line: bool,
 }
 
 #[derive(Error, Debug)]
@@ -123,6 +133,7 @@ impl InstanceVisitor for SolutionInputVisitor {
     }
 
     fn visit_tree(&mut self, lineno: usize, line: &str) -> Action {
+        self.found_tree_line = true;
         let mut builder = BinTreeWithParentBuilder::default();
         match builder.parse_newick_from_str(line, Default::default()) {
             Ok(tree) => self.trees.push((lineno, tree)),
