@@ -5,7 +5,7 @@ use pace26io::newick::NewickWriter;
 use sha2::{Digest, Sha256};
 use std::io::Write;
 
-const DIGEST_HEX_DIGITS: usize = 24;
+const DIGEST_HEX_DIGITS: usize = 32;
 type Algo = Sha256;
 
 /// Computes a hash digest for a binary tree.
@@ -57,8 +57,8 @@ pub fn digest_instance(trees: Vec<NodeCursor>, num_leaves: u32) -> String {
     };
 
     // we use a logarithmic scale to indicate the approximate number of trees and leaves
-    let tree_score = num_trees.ilog2().saturating_sub(1).max(15);
-    let leaves_score = num_leaves.ilog(2).saturating_sub(3).max(15);
+    let tree_score = num_trees.ilog2().saturating_sub(1).min(0xf);
+    let leaves_score = num_leaves.ilog(2).saturating_sub(3).min(0xf);
 
     let mut result = Vec::with_capacity(DIGEST_HEX_DIGITS);
     write!(&mut result, "{tree_score:x}{leaves_score:x}").unwrap();
@@ -94,7 +94,7 @@ pub fn digest_solution(trees: Vec<NodeCursor>, score: u32) -> String {
     };
 
     let mut result = Vec::with_capacity(DIGEST_HEX_DIGITS);
-    write!(&mut result, "{:04x}", score.max(0xffff)).unwrap();
+    write!(&mut result, "{:04x}", score.min(0xffff)).unwrap();
 
     for x in digest.iter().copied().take(DIGEST_HEX_DIGITS / 2 - 2) {
         write!(&mut result, "{x:02x}").unwrap();
