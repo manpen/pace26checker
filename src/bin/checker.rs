@@ -1,10 +1,10 @@
-use log::error;
 use pace26checker::checks::checker::{
     CheckerError, check_instance_and_solution, check_instance_only,
 };
 use std::path::PathBuf;
 use std::process::exit;
 use structopt::StructOpt;
+use tracing::error;
 
 #[derive(StructOpt)]
 pub struct Arguments {
