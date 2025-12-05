@@ -2,10 +2,12 @@ use crate::checks::bin_tree_with_parent::NodeCursor;
 use digest::Output;
 use pace26io::binary_tree::TopDownCursor;
 use pace26io::newick::NewickWriter;
+use serde::de::{Error, Unexpected};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use sha2::{Digest, Sha256};
 use std::io::Write;
 
-const DIGEST_HEX_DIGITS: usize = 32;
+pub const DIGEST_HEX_DIGITS: usize = 32;
 type Algo = Sha256;
 
 /// Computes a hash digest for a binary tree.
@@ -48,7 +50,7 @@ fn digest_digests(digests: &mut [Output<Algo>]) -> Output<Algo> {
 ///
 /// # Warning
 /// Modifies the tree by normalizing the order of each inner leaf.
-pub fn digest_instance(trees: Vec<NodeCursor>, num_leaves: u32) -> String {
+pub fn digest_instance(trees: Vec<NodeCursor>, num_leaves: u32) -> DigestString {
     let num_trees = trees.len() as u32;
 
     let digest = {
@@ -68,7 +70,7 @@ pub fn digest_instance(trees: Vec<NodeCursor>, num_leaves: u32) -> String {
     }
 
     assert_eq!(result.len(), DIGEST_HEX_DIGITS);
-    String::from_utf8(result).unwrap() // TODO: we could avoid this check, but requires unsafe
+    DigestString(String::from_utf8(result).unwrap()) // TODO: we could avoid this check, but requires unsafe
 }
 
 /// Computes the digest of an instance. The digest is invariant in the order of trees and
@@ -83,7 +85,7 @@ pub fn digest_instance(trees: Vec<NodeCursor>, num_leaves: u32) -> String {
 ///
 /// # Warning
 /// Modifies the tree by normalizing the order of each inner leaf.
-pub fn digest_solution(trees: Vec<NodeCursor>, score: u32) -> String {
+pub fn digest_solution(trees: Vec<NodeCursor>, score: u32) -> DigestString {
     let digest = {
         let mut digests: Vec<_> = trees
             .into_iter()
@@ -101,11 +103,66 @@ pub fn digest_solution(trees: Vec<NodeCursor>, score: u32) -> String {
     }
 
     assert_eq!(result.len(), DIGEST_HEX_DIGITS);
-    String::from_utf8(result).unwrap() // TODO: we could avoid this check, but requires unsafe
+    DigestString(String::from_utf8(result).unwrap()) // TODO: we could avoid this check, but requires unsafe
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
+pub struct DigestString(String);
+
+impl DigestString {
+    pub fn new(str: String) -> Option<Self> {
+        if str.len() != DIGEST_HEX_DIGITS {
+            return None;
+        }
+        if str.chars().any(|c| !c.is_digit(16)) {
+            return None;
+        }
+        Some(DigestString(str))
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl Serialize for DigestString {
+    fn serialize<S>(&self, ser: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        ser.serialize_str(&self.0)
+    }
+}
+
+impl<'de> Deserialize<'de> for DigestString {
+    fn deserialize<D>(de: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let mut s = String::deserialize(de)?;
+
+        if s.len() != DIGEST_HEX_DIGITS {
+            return Err(D::Error::invalid_length(
+                s.len(),
+                &"hex digest with exactly 20 characters",
+            ));
+        }
+        if !s.chars().all(|c| c.is_ascii_hexdigit()) {
+            return Err(D::Error::invalid_value(
+                Unexpected::Str(&s),
+                &"a valid hex string",
+            ));
+        }
+
+        s = s.to_lowercase();
+
+        Ok(DigestString(s))
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::checks::bin_tree_with_parent::BinTreeWithParentBuilder;
     use hex_literal::hex;
     use pace26io::binary_tree::NodeIdx;
@@ -184,5 +241,42 @@ mod tests {
 
             previous_hash = Some(digests);
         }
+    }
+
+    #[test]
+    fn digest_string_serde() {
+        let string = (0..DIGEST_HEX_DIGITS)
+            .map(|i| format!("{:x}", i % 16))
+            .collect::<String>();
+        assert_eq!(string.len(), DIGEST_HEX_DIGITS);
+
+        let digest_string = DigestString::new(string).unwrap();
+
+        let serialized = serde_json::to_string(&digest_string).unwrap();
+        let deserialized: DigestString = serde_json::from_str(&serialized).unwrap();
+
+        assert_eq!(digest_string, deserialized);
+
+        assert!(serde_json::from_str::<DigestString>("\"xasdf\"").is_err());
+    }
+
+    #[test]
+    fn digest_string() {
+        let mut string = (0..DIGEST_HEX_DIGITS)
+            .map(|i| format!("{:x}", i % 16))
+            .collect::<String>();
+        assert_eq!(string.len(), DIGEST_HEX_DIGITS);
+
+        assert_eq!(DigestString::new(string.clone()).unwrap().as_str(), &string);
+
+        string.pop();
+        assert!(DigestString::new(string.clone()).is_none());
+
+        string.push('X'); // this is not a hex digit ;)
+        assert!(DigestString::new(string.clone()).is_none());
+
+        string.pop();
+        string.push('F');
+        assert_eq!(DigestString::new(string.clone()).unwrap().as_str(), &string);
     }
 }
