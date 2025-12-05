@@ -1,5 +1,5 @@
 name: Rust CI
-on: [push, pull_request]
+on: [pull_request]
 
 jobs:
   build_linux:
@@ -39,6 +39,12 @@ jobs:
 
       - name: Run tests (smaller release)
         run: cargo test --verbose --profile smaller-release
+
+      - name: Run tests (all features)
+        run: cargo test --all-features --verbose
+
+      - name: Run tests (all features) (smaller release)
+        run: cargo test --all-features --verbose --profile smaller-release
 
       - name: Run Cargo Clippy
         run: cargo clippy
@@ -84,6 +90,12 @@ jobs:
       - name: Run tests (smaller release)
         run: cargo test --profile smaller-release
 
+      - name: Run tests (all features)
+        run: cargo test --all-features --verbose
+
+      - name: Run tests (all features) (smaller release)
+        run: cargo test --all-features --verbose --profile smaller-release
+
       - name: Archive binary
         uses: actions/upload-artifact@v4
         with:
@@ -119,10 +131,14 @@ jobs:
       - name: Run tests (smaller release)
         run: cargo test --profile smaller-release
 
+      - name: Run tests (all features)
+        run: cargo test --all-features --verbose
+
+      - name: Run tests (all features) (smaller release)
+        run: cargo test --all-features --verbose --profile smaller-release
+
       - name: Archive binary
         uses: actions/upload-artifact@v4
         with:
           name: pace26checker-win.exe
           path: target/smaller-release/checker.exe
-
-

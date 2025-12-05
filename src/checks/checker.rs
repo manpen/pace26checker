@@ -34,7 +34,7 @@ pub fn check_instance_only(path: &Path, paranoid: bool) -> Result<Instance, Chec
     Ok(Instance::read(path, paranoid)?)
 }
 
-// Checks feasiblity of solution for instance and if successful returns solution size
+// Checks feasibility of solution for instance and if successful returns solution size
 pub fn check_instance_and_solution(
     instance_path: &Path,
     solution_path: &Path,
