@@ -1,23 +1,23 @@
+use clap::Parser;
 use pace26checker::checks::checker::{
     CheckerError, check_instance_and_solution, check_instance_only,
 };
 use std::path::PathBuf;
 use std::process::exit;
-use structopt::StructOpt;
 use tracing::error;
 
-#[derive(StructOpt)]
+#[derive(Parser)]
 pub struct Arguments {
-    #[structopt()]
+    #[arg()]
     pub instance: PathBuf,
 
-    #[structopt()]
+    #[arg()]
     pub solution: Option<PathBuf>,
 
-    #[structopt(short, long)]
+    #[arg(short, long)]
     pub quiet: bool,
 
-    #[structopt(short, long)]
+    #[arg(short, long)]
     pub paranoid: bool,
 }
 
@@ -33,7 +33,7 @@ fn check(args: &Arguments) -> Result<(), CheckerError> {
 }
 
 fn main() {
-    let args = Arguments::from_args();
+    let args = Arguments::parse();
 
     if !args.quiet {
         tracing_subscriber::fmt()
