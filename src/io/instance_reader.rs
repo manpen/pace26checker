@@ -6,6 +6,7 @@ use std::{
     path::Path,
 };
 
+use pace26io::pace::parameters::tree_decomposition::TreeDecomposition;
 use pace26io::{binary_tree::NodeIdx, newick::*, pace::reader::*};
 use thiserror::Error;
 use tracing::{debug, error, warn};
@@ -25,6 +26,7 @@ pub enum InstanceReaderError {
 pub struct Instance {
     pub trees: Vec<(usize, Tree)>,
     pub stride_lines: Vec<(String, serde_json::Value)>,
+    pub tree_decomposition: Option<(usize, TreeDecomposition)>,
     pub num_leaves: u32,
 }
 
@@ -40,6 +42,7 @@ impl Clone for Instance {
             trees,
             stride_lines: self.stride_lines.clone(),
             num_leaves: self.num_leaves,
+            tree_decomposition: self.tree_decomposition.clone(),
         }
     }
 }
@@ -100,6 +103,7 @@ pub struct InstanceInputVisitor {
     pub header: Option<(u32, u32)>,
     pub trees: Vec<(usize, Tree)>,
     pub stride_lines: Vec<(String, serde_json::Value)>,
+    pub tree_decomposition: Option<(usize, TreeDecomposition)>,
     next_root: NodeIdx,
 }
 
@@ -209,6 +213,12 @@ impl InstanceVisitor for InstanceInputVisitor {
             }
         }
 
+        Action::Continue
+    }
+
+    const VISIT_PARAM_TREE_DECOMPOSITION: bool = true;
+    fn visit_param_tree_decomposition(&mut self, lineno: usize, td: TreeDecomposition) -> Action {
+        self.tree_decomposition = Some((lineno, td));
         Action::Continue
     }
 }
