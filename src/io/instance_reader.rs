@@ -60,11 +60,11 @@ impl Instance {
         &self.trees
     }
 
-    pub fn read(path: &Path, paranoid: bool) -> Result<Self, InstanceReaderError> {
-        debug!("Read instance from {path:?}");
-        let file = File::open(path)?;
-        let mut reader = BufReader::new(file);
-        let mut visitor = InstanceInputVisitor::process(&mut reader);
+    pub fn read_from(
+        reader: &mut impl BufRead,
+        paranoid: bool,
+    ) -> Result<Self, InstanceReaderError> {
+        let mut visitor = InstanceInputVisitor::process(reader);
 
         if !visitor.errors.is_empty() || !visitor.warnings.is_empty() {
             for w in &visitor.warnings {
@@ -90,7 +90,15 @@ impl Instance {
             num_leaves: visitor.header.unwrap().1,
             stride_lines: visitor.stride_lines,
             trees: visitor.trees,
+            tree_decomposition: visitor.tree_decomposition,
         })
+    }
+
+    pub fn read(path: &Path, paranoid: bool) -> Result<Self, InstanceReaderError> {
+        debug!("Read instance from {path:?}");
+        let file = File::open(path)?;
+        let mut reader = BufReader::new(file);
+        Self::read_from(&mut reader, paranoid)
     }
 }
 

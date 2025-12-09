@@ -1,3 +1,5 @@
+use std::fs::File;
+use std::io::{BufRead, BufReader};
 use std::path::Path;
 
 use crate::checks::bin_forest::*;
@@ -41,10 +43,26 @@ pub fn check_instance_and_solution(
     paranoid: bool,
     keep_instance_copy: bool,
 ) -> Result<(Option<Instance>, Solution, Vec<BinForest>), CheckerError> {
-    let instance = Instance::read(instance_path, paranoid)?;
+    let mut instance_reader = BufReader::new(File::open(instance_path)?);
+    let mut solution_reader = BufReader::new(File::open(solution_path)?);
+    check_instance_and_solution_from(
+        &mut instance_reader,
+        &mut solution_reader,
+        paranoid,
+        keep_instance_copy,
+    )
+}
+
+pub fn check_instance_and_solution_from(
+    instance_reader: &mut impl BufRead,
+    solution_reader: &mut impl BufRead,
+    paranoid: bool,
+    keep_instance_copy: bool,
+) -> Result<(Option<Instance>, Solution, Vec<BinForest>), CheckerError> {
+    let instance = Instance::read_from(instance_reader, paranoid)?;
     let instance_clone = keep_instance_copy.then(|| instance.clone());
 
-    let solution = Solution::read(solution_path, instance.num_leaves(), paranoid)?;
+    let solution = Solution::read_from(solution_reader, instance.num_leaves(), paranoid)?;
     let mut forests = Vec::with_capacity(instance.num_trees() as usize);
 
     for (lineno, instance_tree) in instance.trees() {
@@ -78,3 +96,5 @@ pub fn check_instance_and_solution(
 
     Ok((instance_clone, solution, forests))
 }
+
+// TODO: add unit tests
