@@ -41,11 +41,12 @@ impl Solution {
         &self.trees
     }
 
-    pub fn read(path: &Path, num_leaves: u32, paranoid: bool) -> Result<Self, SolutionReaderError> {
-        debug!("Read solution from {path:?}");
-        let file = File::open(path)?;
-        let mut reader = BufReader::new(file);
-        let mut visitor = SolutionInputVisitor::process(&mut reader, num_leaves);
+    pub fn read_from(
+        reader: &mut impl BufRead,
+        num_leaves: u32,
+        paranoid: bool,
+    ) -> Result<Self, SolutionReaderError> {
+        let mut visitor = SolutionInputVisitor::process(reader, num_leaves);
 
         for w in &visitor.warnings {
             warn!(" {w}");
@@ -76,6 +77,13 @@ impl Solution {
             trees: std::mem::take(&mut visitor.trees),
             stride_lines: visitor.stride_lines,
         })
+    }
+
+    pub fn read(path: &Path, num_leaves: u32, paranoid: bool) -> Result<Self, SolutionReaderError> {
+        debug!("Read solution from {path:?}");
+        let file = File::open(path)?;
+        let mut reader = BufReader::new(file);
+        Self::read_from(&mut reader, num_leaves, paranoid)
     }
 }
 
