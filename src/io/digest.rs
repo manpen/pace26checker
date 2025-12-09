@@ -120,6 +120,17 @@ impl DigestString {
         Some(DigestString(str))
     }
 
+    pub fn new_from_binary(bin: &[u8]) -> Option<Self> {
+        if 2 * bin.len() != DIGEST_HEX_DIGITS {
+            return None;
+        }
+        let mut str_data: Vec<u8> = Vec::with_capacity(DIGEST_HEX_DIGITS);
+        for &x in bin {
+            write!(&mut str_data, "{:02x}", x).unwrap();
+        }
+        Some(Self(String::from_utf8(str_data).unwrap()))
+    }
+
     pub fn as_str(&self) -> &str {
         &self.0
     }
