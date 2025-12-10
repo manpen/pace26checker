@@ -1,12 +1,12 @@
 use crate::checks::bin_tree_with_parent::NodeCursor;
 use digest::Output;
+use itertools::Itertools;
 use pace26io::binary_tree::TopDownCursor;
 use pace26io::newick::NewickWriter;
 use serde::de::{Error, Unexpected};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use sha2::{Digest, Sha256};
 use std::io::Write;
-
 pub const DIGEST_HEX_DIGITS: usize = 32;
 type Algo = Sha256;
 
@@ -133,6 +133,20 @@ impl DigestString {
 
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+
+    pub fn to_bin(&self) -> [u8; DIGEST_HEX_DIGITS / 2] {
+        let mut result = [0u8; DIGEST_HEX_DIGITS / 2];
+
+        for ((a, b), target) in self.0.chars().tuples().zip(result.iter_mut()) {
+            *target = ((a.to_digit(16).unwrap() as u8) << 4) | (b.to_digit(16).unwrap() as u8);
+        }
+
+        result
+    }
+
+    pub fn to_boxed_bin(&self) -> Box<[u8]> {
+        Box::new(self.to_bin())
     }
 }
 
@@ -289,5 +303,39 @@ mod tests {
         string.pop();
         string.push('F');
         assert_eq!(DigestString::new(string.clone()).unwrap().as_str(), &string);
+    }
+
+    #[test]
+    fn digest_roundtrip() {
+        let mut original_buffer = [0u8; DIGEST_HEX_DIGITS / 2];
+        let mut i = 1u64;
+
+        for _ in 0..1000 {
+            for b in original_buffer.iter_mut() {
+                *b = i as u8;
+                i += (3 * i + 27) & 0xFF;
+            }
+
+            let sd = DigestString::new_from_binary(&original_buffer).unwrap();
+
+            {
+                let reconstructed_buffer = sd.to_bin();
+                assert_eq!(original_buffer, reconstructed_buffer);
+            }
+
+            {
+                let reconstructed_buffer = sd.to_boxed_bin();
+                assert_eq!(original_buffer.as_slice(), &reconstructed_buffer[..]);
+            }
+        }
+    }
+
+    #[test]
+    fn digest_from_binary_wrong_length() {
+        let buffer = [0u8; DIGEST_HEX_DIGITS / 2 - 1];
+        assert!(DigestString::new_from_binary(&buffer).is_none());
+
+        let buffer = [0u8; DIGEST_HEX_DIGITS / 2 + 1];
+        assert!(DigestString::new_from_binary(&buffer).is_none());
     }
 }
