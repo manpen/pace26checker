@@ -98,3 +98,61 @@ pub fn check_instance_and_solution_from(
 }
 
 // TODO: add unit tests
+#[cfg(test)]
+mod tests {
+    use crate::checks::checker::{check_instance_and_solution, check_instance_only};
+    use crate::io::tests::test_instances;
+
+    #[test]
+    fn check_instance_and_solution_valid() {
+        for (input, output) in test_instances("valid") {
+            check_instance_and_solution(&input, output.as_ref().unwrap(), false, false).unwrap();
+        }
+    }
+
+    #[test]
+    fn check_instance_and_solution_valid_paranoid() {
+        for (input, output) in test_instances("valid") {
+            check_instance_and_solution(&input, output.as_ref().unwrap(), true, false).unwrap();
+        }
+    }
+
+    #[test]
+    fn check_instance_and_solution_invalid() {
+        for (input, output) in test_instances("invalid") {
+            let okay =
+                check_instance_and_solution(&input, output.as_ref().unwrap(), false, false).is_ok();
+            assert!(!okay);
+        }
+    }
+
+    #[test]
+    fn check_instance_and_solution_invalid_paranoid() {
+        for (input, output) in test_instances("invalid") {
+            let okay =
+                check_instance_and_solution(&input, output.as_ref().unwrap(), true, false).is_ok();
+            assert!(!okay);
+        }
+    }
+
+    #[test]
+    fn check_instance_only_invalid_paranoid() {
+        for (input, _) in test_instances("instance_only") {
+            assert!(check_instance_only(&input, true).is_err(), "{input:?}");
+        }
+    }
+
+    #[test]
+    fn check_instance_only_valid() {
+        for (input, _) in test_instances("valid") {
+            assert!(check_instance_only(&input, false).is_ok(), "{input:?}");
+        }
+    }
+
+    #[test]
+    fn check_instance_only_valid_paranoid() {
+        for (input, _) in test_instances("valid") {
+            assert!(check_instance_only(&input, true).is_ok(), "{input:?}");
+        }
+    }
+}

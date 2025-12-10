@@ -286,6 +286,21 @@ mod tests {
     }
 
     #[test]
+    fn digest_deserialize_wrong_length() {
+        assert!(serde_json::from_str::<DigestString>("\"0123\"").is_err());
+    }
+
+    #[test]
+    fn digest_deserialize_invalid_chars() {
+        assert!(
+            serde_json::from_str::<DigestString>("\"01234567890123456789012345678931\"").is_ok()
+        );
+        assert!(
+            serde_json::from_str::<DigestString>("\"0123456789012345678901234567893z\"").is_err()
+        );
+    }
+
+    #[test]
     fn digest_string() {
         let mut string = (0..DIGEST_HEX_DIGITS)
             .map(|i| format!("{:x}", i % 16))

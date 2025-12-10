@@ -218,6 +218,8 @@ impl SolutionInputVisitor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::io::instance_reader::Instance;
+    use crate::io::tests::test_instances;
 
     macro_rules! assert_raises_error {
         ($name : ident, $str : expr, $num_leaves : expr, $pat : pat) => {
@@ -282,4 +284,13 @@ mod tests {
         2,
         SolutionVisitorError::JsonSyntaxError { lineno: 1, .. }
     );
+
+    #[test]
+    fn valid_solutions() {
+        for (i, s) in test_instances("valid") {
+            let instance = Instance::read(&i, false).unwrap();
+            let solution = Solution::read(&s.unwrap(), instance.num_leaves, false).unwrap();
+            assert_eq!(solution.num_trees(), solution.trees.len());
+        }
+    }
 }
