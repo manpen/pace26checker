@@ -7,18 +7,18 @@ use std::process::exit;
 use tracing::error;
 
 #[derive(Parser)]
-pub struct Arguments {
+struct Arguments {
     #[arg()]
-    pub instance: PathBuf,
+    instance: PathBuf,
 
     #[arg()]
-    pub solution: Option<PathBuf>,
+    solution: Option<PathBuf>,
 
     #[arg(short, long)]
-    pub quiet: bool,
+    quiet: bool,
 
     #[arg(short, long)]
-    pub paranoid: bool,
+    paranoid: bool,
 }
 
 fn check(args: &Arguments) -> Result<(), CheckerError> {
