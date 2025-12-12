@@ -64,9 +64,9 @@ pub fn digest_solution(trees: Vec<NodeCursor>, score: u32) -> SolutionDigest {
     };
 
     SolutionDigestBuilder::default()
-        .push_u32(score)
+        .push_u16(score.min(0xffff) as u16)
         .unwrap()
-        .push_slice(&digest.as_slice()[..DIGEST_BYTES - 4])
+        .push_slice(&digest.as_slice()[..DIGEST_BYTES - 2])
         .unwrap()
         .build()
         .unwrap()
