@@ -149,6 +149,19 @@ macro_rules! impl_digest_output {
                     Ok(self)
                 }
 
+                pub fn push_u16(&mut self, value: u16) -> Result<&mut Self, DigestError> {
+                    if self.bits % 8 != 0 {
+                        return Err(DigestError::InvalidAlignment);
+                    }
+
+                    if self.bits + 16 > 8 * DIGEST_BYTES {
+                        return Err(DigestError::InvalidLength);
+                    }
+
+                    self.push_u8((value >> 8) as u8)?;
+                    self.push_u8((value >> 0) as u8)
+                }
+
                 pub fn push_u32(&mut self, value: u32) -> Result<&mut Self, DigestError> {
                     if self.bits % 8 != 0 {
                         return Err(DigestError::InvalidAlignment);
@@ -387,6 +400,20 @@ macro_rules! impl_digest_output {
 
                     assert_eq!(digest.to_binary()[..4], [0x5, 0x8, 0x10, 0x11])
                 }
+
+                #[test]
+                fn builder_push_u16() {
+                    let digest = TestBuilder::default()
+                        .push_u16(0xFFEE)
+                        .unwrap()
+                        .push_slice(&BUFFER[..14])
+                        .unwrap()
+                        .build()
+                        .unwrap();
+
+                    assert_eq!(digest.to_binary()[..4], [0xFF, 0xEE, 0x10, 0x11])
+                }
+
 
                 #[test]
                 fn builder_push_u32() {
