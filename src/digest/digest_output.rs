@@ -35,7 +35,7 @@ macro_rules! impl_digest_output {
                     &self.0
                 }
 
-                pub fn boxed_binary(&self) -> Box<DigestBuffer> {
+                pub fn boxed_binary(&self) -> Box<[u8]> {
                     Box::new(self.0.clone())
                 }
             }
@@ -66,6 +66,14 @@ macro_rules! impl_digest_output {
                     let mut digest = [0u8; DIGEST_BYTES];
                     digest.copy_from_slice(value);
                     Ok(digest.into())
+                }
+            }
+
+            impl TryFrom<Vec<u8>> for $output {
+                type Error = DigestError;
+
+                fn try_from(value: Vec<u8>) -> Result<Self, Self::Error> {
+                    value.as_slice().try_into()
                 }
             }
 
@@ -399,3 +407,4 @@ macro_rules! impl_digest_output {
 
 impl_digest_output!(InstanceDigest);
 impl_digest_output!(SolutionDigest);
+impl_digest_output!(FileDigest);
