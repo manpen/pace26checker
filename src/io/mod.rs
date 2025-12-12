@@ -2,9 +2,6 @@ pub mod forest_dot_writer;
 pub mod instance_reader;
 pub mod solution_reader;
 
-#[cfg(feature = "with_digest")]
-pub mod digest;
-
 #[cfg(test)]
 pub(crate) mod tests {
     use std::ffi::OsStr;

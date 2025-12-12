@@ -6,7 +6,7 @@ license = "GPL-3.0-or-later"
 
 [features]
 default = []
-with_digest = ["dep:digest", "dep:sha2", "dep:serde", "dep:itertools"]
+with_digest = ["dep:digest", "dep:sha2", "dep:serde", "dep:itertools", "dep:paste"]
 
 [dependencies]
 thiserror = "2.0.17"
@@ -23,6 +23,7 @@ serde = { version = "1.0.228", optional = true }
 itertools = {version= "0.14.0" , optional = true}
 
 clap = { version = "4.5.53", features = ["derive"] }
+paste = { version = "1.0.15", optional = true }
 
 [dev-dependencies]
 glob = "0.3.3"
