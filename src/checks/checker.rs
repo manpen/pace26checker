@@ -54,8 +54,8 @@ pub fn check_instance_and_solution(
 }
 
 pub fn check_instance_and_solution_from(
-    instance_reader: &mut impl BufRead,
-    solution_reader: &mut impl BufRead,
+    instance_reader: impl BufRead,
+    solution_reader: impl BufRead,
     paranoid: bool,
     keep_instance_copy: bool,
 ) -> Result<(Option<Instance>, Solution, Vec<BinForest>), CheckerError> {
