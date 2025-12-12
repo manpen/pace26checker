@@ -60,10 +60,7 @@ impl Instance {
         &self.trees
     }
 
-    pub fn read_from(
-        reader: &mut impl BufRead,
-        paranoid: bool,
-    ) -> Result<Self, InstanceReaderError> {
+    pub fn read_from(reader: impl BufRead, paranoid: bool) -> Result<Self, InstanceReaderError> {
         let mut visitor = InstanceInputVisitor::process(reader);
 
         if !visitor.errors.is_empty() || !visitor.warnings.is_empty() {
@@ -232,7 +229,7 @@ impl InstanceVisitor for InstanceInputVisitor {
 }
 
 impl InstanceInputVisitor {
-    pub fn process(reader: &mut impl BufRead) -> InstanceInputVisitor {
+    pub fn process(reader: impl BufRead) -> InstanceInputVisitor {
         let mut visitor = InstanceInputVisitor::default();
         let mut instance_reader = InstanceReader::new(&mut visitor);
 

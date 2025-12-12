@@ -42,7 +42,7 @@ impl Solution {
     }
 
     pub fn read_from(
-        reader: &mut impl BufRead,
+        reader: impl BufRead,
         num_leaves: u32,
         paranoid: bool,
     ) -> Result<Self, SolutionReaderError> {
@@ -190,7 +190,7 @@ impl InstanceVisitor for SolutionInputVisitor {
 }
 
 impl SolutionInputVisitor {
-    pub fn process(reader: &mut impl BufRead, num_leaves: u32) -> SolutionInputVisitor {
+    pub fn process(reader: impl BufRead, num_leaves: u32) -> SolutionInputVisitor {
         let mut visitor = SolutionInputVisitor::default();
         let mut solution_reader = InstanceReader::new(&mut visitor);
 
