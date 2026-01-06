@@ -27,7 +27,7 @@ pub fn digest_instance(trees: Vec<NodeCursor>, num_leaves: u32) -> InstanceDiges
     };
 
     // we use a logarithmic scale to indicate the approximate number of trees and leaves
-    let tree_score = num_trees.ilog2().saturating_sub(1).min(0xf);
+    let tree_score = num_trees.saturating_sub(1).ilog2().min(0xf);
     let leaves_score = num_leaves.ilog(2).saturating_sub(3).min(0xf);
 
     InstanceDigestBuilder::default()
@@ -154,6 +154,34 @@ mod tests {
 
             previous_hash = Some(digests);
         }
+    }
+
+    #[test]
+    fn digest_instance_tree_number() {
+        let instances = vec![
+            vec!["((3,4),(2,1));", "(1,(2,(3,4)));"],
+            vec!["((3,4),(2,1));", "(1,(2,(3,4)));", "(1,(2,(3,4)));"],
+        ];
+
+        let digests = instances
+            .into_iter()
+            .map(|instance| {
+                super::digest_instance(
+                    instance
+                        .iter()
+                        .map(|&nw| {
+                            BinTreeWithParentBuilder::default()
+                                .parse_newick_from_str(nw, NodeIdx::default())
+                                .unwrap()
+                        })
+                        .collect(),
+                    4,
+                )
+            })
+            .collect::<Vec<_>>();
+
+        assert!(digests[0].to_string().starts_with("0"));
+        assert!(digests[1].to_string().starts_with("1"));
     }
 
     #[test]
