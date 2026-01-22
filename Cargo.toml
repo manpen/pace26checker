@@ -10,7 +10,7 @@ with_digest = ["dep:digest", "dep:sha2", "dep:serde", "dep:itertools", "dep:past
 
 [dependencies]
 thiserror = "2.0.17"
-pace26io = { version = "0.1" }
+pace26io = { version = "0.2" }
 
 tracing = "0.1.41"
 tracing-subscriber = "0.3.20"
