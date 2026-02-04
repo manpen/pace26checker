@@ -130,28 +130,49 @@ impl<'a> ForestDotWriter<'a> {
             let l_is_root = roots.contains(&l.node_idx());
             let r_is_root = roots.contains(&r.node_idx());
 
+            let l_reaches_leaf = can_reach_leaf(roots, &l);
+            let r_reaches_leaf = can_reach_leaf(roots, &r);
+
             writeln!(
                 writer,
                 "  {my_key}[label=\"{}\",color={color}{}]",
                 root.node_idx().0,
-                if is_root && (can_reach_leaf(roots, &l) || can_reach_leaf(roots, &r)) {
-                    ",shape=\"triangle\""
-                } else {
+                if is_root {
+                    if l_reaches_leaf || r_reaches_leaf {
+                        ",shape=\"triangle\""
+                    } else {
+                        ",style=\"dotted\""
+                    }
+                } else if l_reaches_leaf || r_reaches_leaf {
                     ""
+                } else {
+                    ",style=\"dotted\""
                 }
             )?;
 
             writeln!(
                 writer,
                 "  {my_key} -> {l_name}{};",
-                if l_is_root { " [style=dashed]" } else { "" }
+                if l_is_root {
+                    " [style=dashed]"
+                } else if !l_reaches_leaf {
+                    "[style=dotted]"
+                } else {
+                    ""
+                },
             )?;
             self.recurse(writer, l, name, roots)?;
 
             writeln!(
                 writer,
                 "  {my_key} -> {r_name}{};",
-                if r_is_root { " [style=dashed]" } else { "" }
+                if r_is_root {
+                    " [style=dashed]"
+                } else if !r_reaches_leaf {
+                    "[style=dotted]"
+                } else {
+                    ""
+                },
             )?;
             self.recurse(writer, r, name, roots)?;
         } else if let Some(l) = root.leaf_label() {
@@ -177,7 +198,10 @@ impl<'a> ForestDotWriter<'a> {
             let roots = self.roots.get(i).cloned().unwrap_or_default();
             let name = format!("t{}", i + 1);
             if i > 0 {
-                println!(" spacer{i} [shape=none, label=\"\", width=0, height=1];");
+                writeln!(
+                    writer,
+                    " spacer{i} [shape=none, label=\"\", width=0, height=1];"
+                )?;
             }
 
             writeln!(writer, "  subgraph {} {{", name)?;
