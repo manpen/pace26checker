@@ -53,6 +53,7 @@ impl<'a> ForestDotWriter<'a> {
     }
 
     pub fn color_leafs(&mut self, solution: &Solution, forests: &[BinForest]) {
+        // color leaves using the index of the solution tree
         for (i, (_, tree)) in solution.trees().iter().enumerate() {
             for u in tree.clone().top_down().dfs() {
                 if let Some(l) = u.leaf_label() {

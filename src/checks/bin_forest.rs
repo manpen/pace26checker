@@ -33,7 +33,7 @@ impl BinForest {
     ///
     /// # Remark
     /// If an error occurs, the forest is left in an undefined state and should
-    /// not be used further. Hence we take ownership of self and only return it
+    /// not be used further. Hence, we take ownership of self and only return it
     /// on success.
     pub fn add_tree(mut self, root_in: NodeCursor) -> Result<Self, TreeInsertionError> {
         if self.roots.iter().any(|r| r == &root_in) {
@@ -67,13 +67,13 @@ impl BinForest {
     }
 
     /// Attempts to extract a subtree according to the MAF rules.
-    /// Any non-matches sibling of the subtree becomes it's own root.
+    /// Any non-matched siblings of the subtree become their own root.
     /// Returns the updated forest if successful, otherwise the forest
     /// is consumed.
     ///
     /// # Remark
     /// If an error occurs, the forest is left in an undefined state and should
-    /// not be used further. Hence we take ownership of self and only return it
+    /// not be used further. Hence, we take ownership of self and only return it
     /// on success.
     pub fn isolate_tree(mut self, other: &NodeCursor) -> Option<Self> {
         if let Some(root) = self.isolate_tree_match(other) {
