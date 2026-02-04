@@ -100,8 +100,10 @@ pub fn check_instance_and_solution_from(
 // TODO: add unit tests
 #[cfg(test)]
 mod tests {
+    use crate::checks::bin_tree_with_parent::NodeCursor;
     use crate::checks::checker::{check_instance_and_solution, check_instance_only};
-    use crate::io::tests::test_instances;
+    use crate::io::tests::{test_instances, test_instances_directory};
+    use pace26io::binary_tree::{TopDownCursor, TreeWithNodeIdx};
 
     #[test]
     fn check_instance_and_solution_valid() {
@@ -154,5 +156,49 @@ mod tests {
         for (input, _) in test_instances("valid") {
             assert!(check_instance_only(&input, true).is_ok(), "{input:?}");
         }
+    }
+
+    #[test]
+    fn all_solution_leafs_are_roots() {
+        for (input, solution) in test_instances("valid") {
+            let (_instance, solution, forests) =
+                check_instance_and_solution(&input, solution.unwrap().as_path(), false, true)
+                    .unwrap();
+            for (i, f) in forests.iter().enumerate() {
+                for solution_leaf in solution.trees.iter().filter_map(|(_, t)| t.leaf_label()) {
+                    assert!(
+                        f.roots()
+                            .iter()
+                            .filter_map(|t| t.leaf_label())
+                            .find(|&l| l == solution_leaf)
+                            .is_some(),
+                        "Label: {} missing in forest {i}",
+                        solution_leaf.0
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn roots_tiny01() {
+        let dir = test_instances_directory("tiny");
+
+        let (_instance, _solution, forests) = check_instance_and_solution(
+            &dir.join("tiny01.in"),
+            &dir.join("tiny01.out"),
+            false,
+            true,
+        )
+        .unwrap();
+
+        fn collect_node_ids(nodes: &[NodeCursor]) -> Vec<u32> {
+            let mut ids: Vec<_> = nodes.iter().map(|c| c.node_idx().0).collect();
+            ids.sort();
+            return ids;
+        }
+
+        assert_eq!(collect_node_ids(forests[0].roots()), vec![4, 6, 7, 8, 11]);
+        assert_eq!(collect_node_ids(forests[1].roots()), vec![4, 6, 12, 13, 15]);
     }
 }

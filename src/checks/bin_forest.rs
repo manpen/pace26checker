@@ -78,10 +78,20 @@ impl BinForest {
     pub fn isolate_tree(mut self, other: &NodeCursor) -> Option<Self> {
         if let Some(root) = self.isolate_tree_match(other) {
             root.update_topology_subtree();
+            self.add_root(root);
             Some(self)
         } else {
             None
         }
+    }
+
+    fn add_root(&mut self, root: NodeCursor) {
+        if self.roots.contains(&root) {
+            return;
+        }
+        let mut builder = BinTreeWithParentBuilder::default();
+        let root = builder.make_root(root);
+        self.roots.push(root);
     }
 
     fn isolate_tree_match(&mut self, other: &NodeCursor) -> Option<NodeCursor> {
@@ -107,10 +117,9 @@ impl BinForest {
 
     fn contract_path(&mut self, lower: &NodeCursor, upper: &NodeCursor) {
         debug_assert!(lower.depth() > upper.depth());
-        let mut builder = BinTreeWithParentBuilder::default();
         for _ in (upper.depth() + 1)..lower.depth() {
             let sibling = lower.remove_sibling().unwrap();
-            self.roots.push(builder.make_root(sibling));
+            self.add_root(sibling);
         }
     }
 

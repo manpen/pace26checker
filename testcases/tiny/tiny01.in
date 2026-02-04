@@ -1,0 +1,7 @@
+#s idigest "0010b172a28d0664d5521e1296fc3586"
+#s name "tiny01"
+#s desc "Example shown on https://pacechallenge.org"
+#p 2 6
+(((5,6),(3,4)),(1,2));
+(((((4,2),1),5),3),6);
+
