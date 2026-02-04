@@ -5,12 +5,16 @@ pub mod solution_reader;
 #[cfg(test)]
 pub(crate) mod tests {
     use std::ffi::OsStr;
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
+
+    pub(crate) fn test_instances_directory(name: impl AsRef<Path>) -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("testcases")
+            .join(name)
+    }
 
     pub(crate) fn test_instances(name: &str) -> Vec<(PathBuf, Option<PathBuf>)> {
-        let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("testcases")
-            .join(name);
+        let dir = test_instances_directory(name);
 
         let mut result = Vec::new();
 
