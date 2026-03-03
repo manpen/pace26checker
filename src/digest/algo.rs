@@ -19,10 +19,29 @@ type Algo = Sha256;
 /// # Warning
 /// Modifies the tree by normalizing the order of each inner leaf.
 pub fn digest_instance(trees: Vec<NodeCursor>, num_leaves: u32) -> InstanceDigest {
+    digest_instance_with_approx(trees, num_leaves, None)
+}
+
+/// Same as [`digest_instance`] if approx is none. Otherwise also include the approx line in the digest hash.
+///
+/// # Warning
+/// Modifies the tree by normalizing the order of each inner leaf.
+pub fn digest_instance_with_approx(
+    trees: Vec<NodeCursor>,
+    num_leaves: u32,
+    approx: Option<(f64, u32)>,
+) -> InstanceDigest {
     let num_trees = trees.len() as u32;
 
     let digest = {
         let mut digests: Vec<_> = trees.into_iter().map(digest_bintree).collect();
+        if let Some((a, b)) = approx {
+            let mut algo = Algo::new();
+            let a = (1000. * a) as i32;
+            algo.update(a.to_le_bytes());
+            algo.update(b.to_le_bytes());
+            digests.push(algo.finalize());
+        }
         digest_digests(&mut digests)
     };
 
@@ -107,18 +126,21 @@ fn digest_digests(digests: &mut [Output<Algo>]) -> Output<Algo> {
 
 #[cfg(test)]
 mod tests {
-    use crate::checks::bin_tree_with_parent::BinTreeWithParentBuilder;
+    use crate::checks::bin_tree_with_parent::{BinTreeWithParentBuilder, NodeCursor};
     use hex_literal::hex;
     use pace26io::binary_tree::NodeIdx;
     use pace26io::newick::BinaryTreeParser;
 
+    fn parse_tree(nw: &str) -> NodeCursor {
+        BinTreeWithParentBuilder::default()
+            .parse_newick_from_str(nw, NodeIdx::default())
+            .unwrap()
+    }
+
     #[test]
     fn digest_bintree() {
         const TREE: &str = "((3,4),(2,1));"; // the hash digest below was computed for the string "((1,2),(3,4));"
-        let tree = BinTreeWithParentBuilder::default()
-            .parse_newick_from_str(TREE, NodeIdx::default())
-            .unwrap();
-        let digest = super::digest_bintree(tree);
+        let digest = super::digest_bintree(parse_tree(TREE));
         assert_eq!(
             digest[..],
             hex!("5aecb10e41777da0a300dae254d01a2fad3fd892d0b3b553821e2e684194a1f6")
@@ -138,14 +160,7 @@ mod tests {
         let mut previous_hash = None;
 
         for instance in instances {
-            let trees: Vec<_> = instance
-                .iter()
-                .map(|&nw| {
-                    BinTreeWithParentBuilder::default()
-                        .parse_newick_from_str(nw, NodeIdx::default())
-                        .unwrap()
-                })
-                .collect();
+            let trees: Vec<_> = instance.iter().map(|&x| parse_tree(x)).collect();
             let digests = super::digest_instance(trees, 4);
 
             if let Some(previous_hash) = previous_hash {
@@ -154,6 +169,17 @@ mod tests {
 
             previous_hash = Some(digests);
         }
+    }
+
+    #[test]
+    fn digest_instance_with_approx() {
+        let trees = || vec![parse_tree("((3,4),(2,1));"), parse_tree("(1,(2,(3,4)));")];
+        let plain_digest = super::digest_instance(trees(), 4);
+        let digest_wo_approx = super::digest_instance_with_approx(trees(), 4, None);
+        let digest_with_approx = super::digest_instance_with_approx(trees(), 4, Some((1.23, 1337)));
+
+        assert_eq!(plain_digest, digest_wo_approx);
+        assert_ne!(digest_wo_approx, digest_with_approx);
     }
 
     #[test]
@@ -166,17 +192,7 @@ mod tests {
         let digests = instances
             .into_iter()
             .map(|instance| {
-                super::digest_instance(
-                    instance
-                        .iter()
-                        .map(|&nw| {
-                            BinTreeWithParentBuilder::default()
-                                .parse_newick_from_str(nw, NodeIdx::default())
-                                .unwrap()
-                        })
-                        .collect(),
-                    4,
-                )
+                super::digest_instance(instance.iter().map(|&nw| parse_tree(nw)).collect(), 4)
             })
             .collect::<Vec<_>>();
 
@@ -197,14 +213,7 @@ mod tests {
         let mut previous_hash = None;
 
         for sol in solutions {
-            let trees: Vec<_> = sol
-                .iter()
-                .map(|&nw| {
-                    BinTreeWithParentBuilder::default()
-                        .parse_newick_from_str(nw, NodeIdx::default())
-                        .unwrap()
-                })
-                .collect();
+            let trees: Vec<_> = sol.iter().map(|&nw| parse_tree(nw)).collect();
             let digests = super::digest_solution(trees, 3);
 
             if let Some(previous_hash) = previous_hash {
