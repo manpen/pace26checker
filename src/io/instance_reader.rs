@@ -25,6 +25,7 @@ pub enum InstanceReaderError {
 
 pub struct Instance {
     pub trees: Vec<(usize, Tree)>,
+    pub approx: Option<(f64, u32)>,
     pub stride_lines: Vec<(String, serde_json::Value)>,
     pub tree_decomposition: Option<(usize, TreeDecomposition)>,
     pub num_leaves: u32,
@@ -43,6 +44,7 @@ impl Clone for Instance {
             stride_lines: self.stride_lines.clone(),
             num_leaves: self.num_leaves,
             tree_decomposition: self.tree_decomposition.clone(),
+            approx: self.approx,
         }
     }
 }
@@ -58,6 +60,10 @@ impl Instance {
 
     pub fn trees(&self) -> &[(usize, Tree)] {
         &self.trees
+    }
+
+    pub fn approx(&self) -> Option<(f64, u32)> {
+        self.approx
     }
 
     pub fn read_from(reader: impl BufRead, paranoid: bool) -> Result<Self, InstanceReaderError> {
@@ -88,6 +94,7 @@ impl Instance {
             stride_lines: visitor.stride_lines,
             trees: visitor.trees,
             tree_decomposition: visitor.tree_decomposition,
+            approx: visitor.approx,
         })
     }
 
@@ -109,6 +116,7 @@ pub struct InstanceInputVisitor {
     pub trees: Vec<(usize, Tree)>,
     pub stride_lines: Vec<(String, serde_json::Value)>,
     pub tree_decomposition: Option<(usize, TreeDecomposition)>,
+    pub approx: Option<(f64, u32)>,
     next_root: NodeIdx,
 }
 
@@ -123,7 +131,7 @@ pub enum InstanceVisitorError {
     #[error("Line {} contains invalid Newick string: {newick_error}", lineno + 1)]
     InvalidNewick {
         lineno: usize,
-        newick_error: pace26io::newick::ParserError,
+        newick_error: ParserError,
     },
 
     #[error("Header indicates {expected} trees, but found {found}")]
@@ -142,6 +150,9 @@ pub enum InstanceVisitorError {
     #[error("Line {} is neither a comment, header, nor a tree", lineno + 1)]
     UnrecognizedLine { lineno: usize },
 
+    #[error("Line {} contains additional approx line ('#a')", lineno + 1)]
+    MultipleApproxLine { lineno: usize },
+
     #[error("Line {} has invalid JSON syntax: {0}", lineno + 1)]
     JsonSyntaxError {
         lineno: usize,
@@ -150,13 +161,16 @@ pub enum InstanceVisitorError {
     },
 
     #[error(transparent)]
-    PaceParserError(#[from] pace26io::pace::reader::ReaderError),
+    PaceParserError(#[from] ReaderError),
 }
 
 #[derive(Debug, Error, PartialEq)]
 pub enum InstanceVisitorWarning {
     #[error("Line {} has extra whitespace", lineno + 1)]
     ExtraWhitespace { lineno: usize },
+
+    #[error("Param A of approx line {} has should be in range 1.0 <= a < 1.5. Found: a={}", param_a, lineno + 1)]
+    ParamARange { param_a: f64, lineno: usize },
 }
 
 impl InstanceVisitor for InstanceInputVisitor {
@@ -185,6 +199,22 @@ impl InstanceVisitor for InstanceInputVisitor {
         }
 
         self.next_root.0 += self.header.map(|h| h.1.saturating_sub(1)).unwrap_or(0);
+
+        Action::Continue
+    }
+
+    fn visit_approx_line(&mut self, lineno: usize, param_a: f64, param_b: usize) -> Action {
+        if !(1.0..1.5).contains(&param_a) {
+            self.warnings
+                .push(InstanceVisitorWarning::ParamARange { param_a, lineno });
+        }
+
+        if self.approx.is_some() {
+            self.errors
+                .push(InstanceVisitorError::MultipleApproxLine { lineno });
+        }
+
+        self.approx = Some((param_a, param_b as u32));
 
         Action::Continue
     }
@@ -304,6 +334,17 @@ mod tests {
         };
     }
 
+    macro_rules! assert_raises_warning {
+        ($name : ident, $str : expr, $pat : pat) => {
+            #[test]
+            fn $name() {
+                let data = $str;
+                let visitor = InstanceInputVisitor::process(&mut &data[..]);
+                assert!(visitor.warnings.iter().any(|e| matches!(e, $pat)));
+            }
+        };
+    }
+
     assert_raises_error!(
         missing_tree,
         b"#p 2 2\n(1,2);",
@@ -369,5 +410,23 @@ mod tests {
         invalid_newick,
         b"#p 1 1\n(0,1);\n();",
         InstanceVisitorError::InvalidNewick { lineno: 2, .. }
+    );
+
+    assert_raises_error!(
+        multiple_approx_lines,
+        b"#a 1.23 42\n#p 1 1\n#a 1.2 35\n(0,1);\n();",
+        InstanceVisitorError::MultipleApproxLine { lineno: 2, .. }
+    );
+
+    assert_raises_warning!(
+        param_a_too_small,
+        b"#a 0.5 123\n#p 2 2\n(1,2);\n(2,1);\n",
+        InstanceVisitorWarning::ParamARange { lineno: 0, .. }
+    );
+
+    assert_raises_warning!(
+        param_a_too_large,
+        b"#a 1.5 123\n#p 2 2\n(1,2);\n(2,1);\n",
+        InstanceVisitorWarning::ParamARange { lineno: 0, .. }
     );
 }
